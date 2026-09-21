@@ -1,0 +1,4 @@
+interface:
+  display_name: "Zone17 Cook Plan"
+  short_description: "Parallel Orca teams with immediate Advisor handoffs"
+  default_prompt: "Use $zone17-cook-plan to execute my phase plan with parallel Orca teams; ask for missing provider/model choices, handle worker_done immediately, and use the 15-minute watchdog only for recovery."
