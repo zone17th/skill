@@ -293,22 +293,77 @@ loop. Continue independent healthy work.
 
 ## Report before each Advisor yield
 
-Every actual Advisor pass ends with a concise user-facing progress report in
+Every actual Advisor pass ends with a structured, complete user-facing progress report in
 the user's language before the session sleeps or yields. This applies to the
 initial Advisor and the reused automation Advisor, including passes with no
 new progress or a blocker. The final response is the report; no separate message
-to other people or external channels is implied. Persist the checkpoint and
-record final activity, ownership release/yield and rearm before reporting so
-the stated next wake reflects saved state.
+to other people or external channels is implied.
 
-Include these facts, combining empty categories rather than padding the report:
+Treat reporting as a pass state machine:
 
-- Completed and Advisor-accepted work, distinguishing tested/reviewed work
-  still awaiting acceptance, integration or a human merge.
-- Active features with owner/team and current implementation/test/review stage.
-- Blockers or decisions needed, plus newly dispatched and next eligible tasks.
-- Actual test/review evidence or a compact checkpoint link; use progress counts
-  only when the contract and denominator are known. Do not invent percentages.
+1. Finish substantive work, persist the checkpoint, record final activity,
+   release/yield ownership as required, and verify schedule rearm so the report
+   describes saved state.
+2. Create a stable `advisor_report_id` from durable pass identity such as Run ID,
+   generation and pass sequence. Persist a compact report body/reference and set
+   `report_status: prepared`. This state survives interruption after the lease is
+   released. Do not label the logical pass `reported` or `complete` yet.
+3. Emit a non-empty final response containing the report and its report ID. Make
+   no further tool calls or work after composing it; the final response is the
+   terminal action of the pass. A checkpoint, tracker comment, schedule receipt,
+   lease release or automatic conversation recap is not the user-facing report.
+4. On the next Advisor wake, first reconcile any `prepared` report against the
+   prior provider transcript or automation output snapshot. A matching report ID
+   and non-empty body changes it to `observed`. If the turn ended without that
+   evidence, mark `recovery-needed`, emit the prepared report once before normal
+   new status, then record the new receipt. Never resend when a matching receipt
+   exists; cap recovery resend at one and expose a delivery blocker if it still
+   cannot be observed.
+
+Because a provider final response ends the current turn, receipt reconciliation
+normally happens from the next Advisor pass or a read-only runtime observer. A
+pending receipt does not authorize a second Advisor and does not block event
+recovery; it makes the previous pass's reporting boundary unverified until
+reconciled. Automation status `completed` alone does not prove reporting.
+
+Use a stable, versioned progress ledger for the phase. Give every scoped
+plan task or Advisor-defined feature a positive weight when it enters scope. Use
+an explicit estimate when available; otherwise use equal weights and label the
+basis. When a parent is split, distribute its existing weight among children so
+the denominator does not grow merely because the work was decomposed. Change the
+denominator only for a real scope change, increment the scope version and state
+what was added or removed. Count weight in the completion numerator only after
+Advisor acceptance backed by required evidence. Work in implementation, test,
+fix or review remains in progress even when much effort has been spent.
+
+Compute and show:
+
+```text
+phase_completion_percent = advisor_accepted_weight / total_scoped_weight * 100
+```
+
+If no valid ledger exists, report `%: unknown`, name the missing basis and create
+the ledger before the next ordinary yield. Never derive progress from elapsed
+time, token use, messages, confidence or an unverified worker estimate. For an
+in-progress task, show its stage and verified acceptance criteria/evidence; add a
+task-level percentage only when that task has its own explicit weighted criteria.
+
+The report must contain these sections, even when a section says none:
+
+- **Đã làm / Done:** every Advisor-accepted task/feature, acceptance/integration
+  state and decisive evidence. Distinguish accepted work awaiting human merge.
+- **Đang làm / In progress:** every active task, owner/team, current
+  implementation/test/fix/review stage, verified output and next action.
+- **Chưa làm / Not started:** every remaining scoped task, readiness/dependencies,
+  intended owner when known and what unlocks it.
+- **Bị chặn / Blocked:** blocked tasks, reason, decision/owner needed and unaffected
+  work that can continue.
+- **Tiến độ / Progress:** scope version, weighting basis, done/in-progress/
+  not-started/blocked counts and weight totals, accepted weight over total weight,
+  and computed phase completion percentage. The four category weights must sum to
+  total scoped weight. State denominator changes since the last report.
+- Actual test/review evidence or a compact checkpoint link. Use progress counts
+  only when the task inventory and denominator are known.
 - Jev usage since the last report: actual requests/questions, cache reuse,
   omissions or failures, escalations and one or two decisions it supported.
   Use recorded evidence; state zero or unknown usage truthfully. Refer to
@@ -320,12 +375,17 @@ Include these facts, combining empty categories rather than padding the report:
 - Advisor compactions as `count/10` with verified or lower-bound evidence, or
   `unknown`; pending/completed rotation and any handover blocker.
 
+Prefer a compact task inventory table with columns for task/feature, weight,
+owner/team, status/stage, evidence or dependency, and next action. Do not collapse
+multiple scoped tasks into vague phrases such as "five teams are active" when
+the durable ledger can name them.
+
 Finish with the actual state: waiting for events/schedule, blocked, paused, or
 phase completed. A no-change pass can say no new progress, name the continuing
-tasks/blocker and the next expected wake. An internal checkpoint file or tracker
-comment alone does not satisfy the user-facing report. Raw timer/precheck skips
-are not Advisor passes and need no routine report. Surface actionable failures
-through the verified notification route described above.
+tasks/blocker and the next expected wake. Put the report ID in a short footer so
+runtime output can correlate it without confusing the progress summary. Raw
+timer/precheck skips are not Advisor passes and need no routine report. Surface
+actionable failures through the verified notification route described above.
 
 Pause/disable the exact schedule when the user pauses the phase, it completes,
 or it is cancelled; preserve active work and task evidence rather than implying cancellation

@@ -216,15 +216,35 @@ accepted task's clean worktree through Orca. Do not force-delete dirty, live,
 unmerged or unverifiable work. Record final evidence through the project's
 required reporting route when configured; honor its completion permissions.
 
-Before ending every Advisor turn to sleep/yield, persist the checkpoint and
-check the per-session compaction count. Follow
+Treat the user-facing report as a terminal condition of every actual Advisor
+pass, not optional narration. Before ending the turn, persist the checkpoint,
+final activity/rearm state and a stable `advisor_report_id` with
+`report_status: prepared`; then check the per-session compaction count. Follow
 [Advisor rotation](references/advisor-checkpoint.md#rotate-after-10-compactions)
 when the threshold is reached; report unknown counts or blocked handovers.
-Then send the user a concise progress report: accepted/integrated work, active
-tasks/owners/stages, blockers, newly assigned or next-ready work, and verified
-schedule state with the next expected wake. Include evidence and pending
-acceptance where relevant. Report even when no progress changed; do not imply
-that yielding completes the phase. Follow the reporting contract in
+
+The non-empty final response must be the progress report and carry that report
+ID. It gives a complete phase view grouped as `done`, `in progress`, `not
+started` and `blocked`, naming every task/feature, owner/team, stage, dependency
+or blocker and next action. Include newly assigned/next-ready work, evidence and
+pending acceptance, verified schedule state and the next expected wake.
+
+Always report the phase completion percentage from a durable, versioned progress
+ledger. The numerator counts only Advisor-accepted task/feature weight; the
+denominator is total scoped weight. Establish weights when decomposing the plan,
+use explicitly labelled equal weights when no better estimate exists, and keep a
+parent's weight constant when splitting it among children. Never invent a
+percentage from elapsed time, message counts or subjective confidence; report
+an unknown percentage and the missing basis until the ledger is established.
+Report scope/denominator changes explicitly.
+
+Report even when no progress changed; do not imply that yielding completes the
+phase. Checkpoint writes, tracker comments, schedule rearm, lease release and
+conversation recap do not satisfy this condition. If execution stops after
+preparation but before a matching final response is observable, leave the report
+pending; the next Advisor wake reconciles the prior transcript/output and sends
+the prepared report once when missing. Follow the reporting, progress accounting
+and deduplication contract in
 [Advisor events and recovery](references/advisor-checkpoint.md).
 
 Disable the run's schedule when the phase finishes or the user pauses it.

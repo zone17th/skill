@@ -37,7 +37,7 @@ without evidence; later stages stay unverified.
 | Bound | Same phase Run, authenticated Advisor owner and current generation verified from runtime |
 | Processed | Actual checkpoint, handled delivery IDs when present, recovery/dispatch decisions and evidence |
 | Rearmed | Own lease released or valid yield recorded, final activity persisted, correct next due time and schedule still enabled |
-| Reported | User-facing progress report before Advisor yield, with actual work state and verified next wake or blocker |
+| Reported | Matching `advisor_report_id` plus non-empty user-facing final response in the provider transcript or automation output, including complete done/in-progress/not-started/blocked inventory, ledger-based phase percentage, and verified next wake or blocker |
 
 For Orca, inspect `automations show`, `automations runs`, `status` and exact
 terminal/worker receipts as supported by current help. Filter history to the
@@ -45,6 +45,12 @@ relevant run IDs and compact fields; avoid dumping entire provider transcripts.
 An automation can report `completed` after dispatching input while the Advisor
 has not completed a turn. Neither that status, a terminal tab, precheck exit 0
 nor prompt text in a snapshot substitutes for the remaining evidence.
+A pass may persist `report_status: prepared` before its final response because it
+cannot inspect its own post-final transcript. On the next wake or from a read-only
+observer, reconcile that entry against the actual output. If the matching report
+is absent, the reporting boundary failed even when checkpoint and rearm passed;
+resend the prepared report once, deduplicated by ID, and preserve a blocker when
+receipt still cannot be observed.
 
 Use current role-specific bindings, not a copied historical handle. For a fresh
 Advisor continuation, verify the old owner's explicit release/handover or other

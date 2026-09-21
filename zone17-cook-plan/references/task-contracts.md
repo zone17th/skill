@@ -27,6 +27,16 @@ Persist only operational memory needed to resume:
   requests separately from typed questions, cache hits and relayed records.
 - Feature ID -> Orca parent Task/active Dispatch -> child Run IDs, plus any
   project-required issue reference.
+- Versioned phase progress ledger: every scoped task/feature, its parent, stable
+  weight, status (`done`, `in-progress`, `not-started`, or `blocked`), owner,
+  dependency/blocker and acceptance evidence. Record `total_weight`,
+  `advisor_accepted_weight`, weight totals for all four status buckets, computed
+  completion percentage, weighting basis and scope version. The bucket weights
+  must sum to `total_weight`. If no estimates exist, use equal weights and label
+  that basis.
+  Splitting a task allocates its existing weight among children rather than
+  increasing the denominator. Only Advisor acceptance moves weight into the
+  numerator; stage activity remains visible without inflating completion.
 - Exact worktree selectors, absolute paths, branch SHAs and ownership.
 - Contract/report/evidence paths, gates, pending decisions and acknowledged
   message/request IDs. Use the project's configured source of truth; if no
@@ -48,6 +58,14 @@ Persist only operational memory needed to resume:
   start, successful Run binding, recovery-pass result and rearm evidence. Store
   pending launch claims separately from authoritative Advisor ownership. A
   failed launch/binding must not overwrite the last valid owner's yield proof.
+- Per-pass Advisor report ledger: stable `advisor_report_id`, pass/Run generation,
+  `report_status` (`prepared`, `observed`, or `recovery-needed`), prepared time,
+  compact content reference/digest, final-response transcript/output receipt,
+  observation time and resend count. Set `prepared` after final checkpoint/rearm
+  and before the final response. Checkpoint, tracker, lease and schedule receipts
+  never mark a report observed. Reconcile a pending entry on the next wake and
+  resend the prepared report at most once when the matching final response is
+  absent; deduplicate by report ID.
 
 Choose a shared, authorized durable location. Do not create a second global
 tracking board or write run-specific settings into this installed skill.
