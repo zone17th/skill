@@ -130,6 +130,17 @@ drive letters, tracker names) in the run's team rules, not here.
   as recovered when any busy marker follows the error on screen. Spinners
   redraw character by character, so do not rely on one literal "Working"
   string. Log every nudge and skip, and honour the pause marker.
+- **Next account before the next profile.** A usage, weekly or rolling quota
+  limit is a proven failure of that account, not of the provider. When the
+  user has several accounts for the same provider (for example several
+  runtime-managed Codex accounts, each with its own home), move the lane to
+  the next account on the same worktree before using the fallback profile:
+  1. Fence the old Dispatch.
+  2. Hand-start the agent with that account's home.
+  3. Create a Task that carries the progress note.
+  4. Dispatch it with the preamble.
+  Do not flip the host-wide active account unless the user asks, because that
+  moves every new launch.
 - **Fallback on proven failure only.** A fallback needs positive evidence, such
   as quota or usage-limit exhaustion or a launcher that is not available.
   Record requested and effective profiles. Tell the user when two independent
