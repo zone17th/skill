@@ -13,6 +13,10 @@ drive letters, tracker names) in the run's team rules, not here.
    files, boundary/unused-code gates) and then the repository's contract tests
    on the integration branch. A Tester pass never replaces this run. Record the
    commands, counts and exit codes in the merge commit body or checkpoint.
+   First make sure the integration checkout's own test database exists and is
+   migrated, using the project's ensure/migrate step. Then read the verbose
+   output for skipped tests: a DB-backed test that SKIPs for a missing database
+   is not evidence, even when the package prints `ok`.
 2. **Read the uncovered delta.** When commits landed after the last Reviewer
    pass, diff the reviewed SHA against the final SHA. Production code in that
    delta needs a Reviewer delta round, or an Advisor review recorded with a
@@ -74,6 +78,11 @@ drive letters, tracker names) in the run's team rules, not here.
   the lease is finished or stale, or already yours. A combined
   "check and start" call can overwrite another session's fresh lease. If that
   happens, restore their lease at once and make no Run mutation.
+- **Keep the lease fresh.** Touch the lease at least every 10 minutes during
+  long reruns or waits. Run anything that can exceed that (full audit suites,
+  packaging, e2e) in the background and touch between checks. A stale lease
+  lets the watchdog bind another Advisor mid-merge. If that happens, the other
+  Advisor must stand down, and you re-take the Run and drain the inbox.
 - **Parallel invocations.** A scheduler can invoke two Advisor sessions for the
   same tick. A session that sees another session's fresh lease stays out of the
   Run for that pass and reports that.
