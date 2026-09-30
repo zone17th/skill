@@ -33,6 +33,15 @@ review and handing back at a safe stage boundary.
   default in task dispatch, test/review handoffs, browser work and acceptance.
   Record outcomes, valid cache reuse or explicit omission reasons, and summarize
   actual usage before Advisor sleep. Real evidence and Advisor acceptance remain required.
+- The Advisor reruns affected checks on every merge result itself. It rejects
+  Tester reports that lack command, exit code, log and SHA, and withholds
+  acceptance while any criterion was never executed. Field-tested operating
+  rules are in [Advisor operations](zone17-cook-plan/references/advisor-operations.md):
+  - lease discipline and coordinator drift
+  - fresh-worktree launch races and `ask` timeouts
+  - nudge-not-fallback for transient provider errors
+  - host resource limits
+  - pause/resume and the decision record
   Tracking and completion requirements come from the current project's rules.
 
 ## Install globally

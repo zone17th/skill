@@ -392,3 +392,8 @@ or it is cancelled; preserve active work and task evidence rather than implying 
 automatically stops or deletes workers.
 While the phase is explicitly paused, preserve incoming events without
 automatically resuming implementation; drain them when the user resumes it.
+The pause marker, safe-point instruction to leads and resume steps are in
+[Advisor operations](advisor-operations.md#pause-and-resume). The lease
+read-then-take order and coordinator-drift recovery are in
+[its lease section](advisor-operations.md#one-advisor-lease-and-coordinator).
+Every report timestamp comes from the system clock.

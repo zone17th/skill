@@ -242,6 +242,13 @@ or unavailable, the Advisor handles that role temporarily on its confirmed
 provider/model; do not repeatedly request fallback configuration or select an
 unconfirmed provider/model.
 
+Transient provider errors are not failures. These include rate limits, "model at
+capacity", proxy/gateway 5xx, stream disconnects and exhausted reconnects. Nudge
+the worker to continue and do not fall back. A launch whose dispatch text
+landed in a shell instead of the agent is a positive launch failure; recover it
+on the same worktree. Both procedures are in
+[Advisor operations](advisor-operations.md).
+
 Preserve the revision, evidence, unresolved findings and task/stage identity.
 Ensure the previous editor is fenced/stopped before transferring edit ownership.
 Record the primary profile, temporary owner and reason. Keep independent review:
@@ -302,11 +309,16 @@ Advisor accepts feature packets and serializes merges into the actual phase
 branch. Reconcile the latest integration base, resolve conflicts through the
 assigned worker, and rerun affected checks/review when integration changes the
 code. Preserve passing evidence for unchanged code when still applicable.
+The Advisor may resolve a purely additive conflict itself and must say so in the
+merge commit. It always reruns the affected checks on the merge result before
+committing it. See [Advisor operations](advisor-operations.md#acceptance).
 
 Before removing a feature worktree, verify acceptance, integration/commit
 reachability, clean tracked and untracked state, durable evidence, settled
 workers and no shared process/dependency. `worker-release` closes a settled
-owned terminal; it does not delete the worktree. Use normal Orca worktree
+owned terminal; it does not delete the worktree. Close child stage terminals,
+check that no link/junction points outside the worktree, and drop per-lane
+databases. Use normal Orca worktree
 removal, without `--force`; honor repository archive hooks. A removal refusal
 is a retained worktree with a stated reason, not an instruction to force it.
 

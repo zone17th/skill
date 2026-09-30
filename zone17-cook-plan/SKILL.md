@@ -63,6 +63,10 @@ handoff.
    actual host/provider. Instructions, a saved schedule or a successful manual
    launch alone do not establish that unattended recovery works. Record partial
    or blocked verification explicitly; never report an untested timer as ready.
+7. Read [Advisor operations](references/advisor-operations.md) before the first
+   acceptance, pause or launch recovery. It covers the Advisor's own reruns,
+   lease discipline, launch races, transient provider errors, host resources,
+   pause/resume and the decision record.
 
 ## Team roster
 
@@ -205,6 +209,13 @@ Accept only after checking the submitted revision, actual test/browser results,
 resolved review findings, acceptance criteria, remaining risks and any evidence
 required by the project's completion rules.
 Jev scores and `worker_done` are not acceptance, test evidence or merge authority.
+Before integrating, the Advisor reruns the affected checks on the merge result
+itself; a Tester pass never replaces that run. A Tester report counts only
+when it carries command, exit code, raw log and tested SHA for each check.
+Review any delta committed after the last Reviewer pass. Withhold acceptance
+while any criterion was never actually executed, and send the gap back to the
+same lead. Details are in
+[Advisor operations](references/advisor-operations.md#acceptance).
 The Advisor decides whether the feature is complete. Integrate only through the
 authorized phase branch workflow and honor repository rules reserving merges for
 humans. If a human merge is required, report ready-for-merge and retain work.
