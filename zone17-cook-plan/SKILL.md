@@ -82,6 +82,7 @@ allows. A reviewer is a separate agent instance from that feature's author.
 | Member 3: BE Reviewer | Identify concrete backend bugs, regressions, risks and missing verification | Ask primary provider/model and optional BE Reviewer fallback provider/model |
 | Member 4: FE Reviewer | Identify frontend bugs, UX/accessibility/responsiveness risks and missing verification | Ask primary provider/model; fallback is the optional Fallback FE Reviewer profile below |
 | Member 5: Tester | Run actual tests, operate Orca browser, capture reproducible evidence | Ask |
+| Tester visual | Stages that need a real browser, desktop windows/computer use, screenshots or visual diff; classifies deterministic diffs | Ask optionally; unset means every test stage, visual ones included, goes to Member 5 |
 | Fallback FE Worker | Optional fallback for Member 2 | Ask optionally; unset means Advisor handles the role temporarily |
 | Fallback FE Reviewer | Optional fallback for Member 4; retain independent review | Ask optionally; unset means Advisor handles the role temporarily |
 | Jev | Narrow typed judgments for everyone in the team | TypeSafe, `jev-latest` unless the user selects another available Jev model |
@@ -91,7 +92,8 @@ host, and available concurrency for each selected profile. All fallback choices
 are optional; record an unset fallback as `null`, not an unanswered requirement.
 Member 1 and Member 3 have their own BE fallbacks; Member 2 and Member 4 use
 Fallback FE Worker and Fallback FE Reviewer respectively, without another
-duplicate FE fallback setting. The previously mentioned `claude-opus-5` and
+duplicate FE fallback setting. Tester visual is optional and needs no fallback
+of its own. When it is unset or unavailable, Member 5 takes its stages. The previously mentioned `claude-opus-5` and
 `terra` remain optional FE Worker candidates, not automatic defaults. If chosen,
 confirm their exact provider/model mappings and order. Keep credentials in each
 provider's existing configuration.
@@ -189,6 +191,14 @@ All browser interaction uses Orca CLI and Orca's embedded browser. Tester owns
 its page IDs and follows snapshot -> interaction -> fresh snapshot. Jev can
 select an observed candidate or interpret a message; it cannot invent page
 elements, replace actual browser actions or declare a test passed.
+
+Contracts mark which stages are visual. That covers browser e2e,
+render/fidelity, theme/zoom/responsive layout and packaged desktop runs. Those
+stages go to the Tester visual profile when one is set; otherwise they go to
+Member 5. Either way the stage follows
+[visual testing](references/advisor-operations.md#visual-testing): a
+deterministic diff comes first, the model only classifies it, and screenshots
+never prove save, permission or data-isolation behaviour.
 
 ## Advisor acceptance and completion
 

@@ -43,6 +43,30 @@ drive letters, tracker names) in the run's team rules, not here.
    spans several slices, comment per accepted slice and leave the status until
    the whole issue is done.
 
+## Visual testing
+
+- **Who runs it.** Stages listed in the contract's `visual_stages` go to the
+  Tester visual profile when one is configured. When it is unset, every test
+  stage, visual or not, goes to Member 5 (Tester). The rules below apply to
+  whoever runs the stage.
+- **Deterministic diff first.** Use screenshot assertions or pixel diff with a
+  declared tolerance against a committed baseline or the project's oracle. The
+  model reads the diff and classifies it as one of: expected, regression,
+  within tolerance, stale baseline, environment or uncertain. A model never
+  declares visual parity by eye.
+- **Jev at visual checkpoints.** Use a Choice for the observed page/window state
+  and one for the diff class, and a Noul for each visual acceptance claim
+  against its criterion. `uncertain` goes to the lead or Advisor and is never
+  auto-accepted.
+- **Limits of screenshots.** A screenshot never proves save, permission,
+  idempotency or key/data isolation. Those stay automated tests.
+- **Baselines.** Commit baselines with the stage and state which platform they
+  were rendered on. Report platform gaps; for example, win32-only baselines
+  leave CI on another OS without coverage. Rerun without updating snapshots and
+  record the zero-diff result.
+- **Clean up.** The visual stage starts and stops its own app/stack and cleans
+  the data and processes it created. Evidence and baselines are never deleted.
+
 ## One Advisor: lease and coordinator
 
 - **Read first, then take.** Read the lease file, the Run's coordinator and the

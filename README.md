@@ -42,6 +42,9 @@ review and handing back at a safe stage boundary.
   - nudge-not-fallback for transient provider errors
   - host resource limits
   - pause/resume and the decision record
+- An optional Tester visual profile takes browser, desktop-window, screenshot
+  and visual-diff stages. A deterministic diff comes first and the model only
+  classifies it. When the profile is unset, the Tester runs every test stage.
   Tracking and completion requirements come from the current project's rules.
 
 ## Install globally

@@ -92,6 +92,8 @@ base_sha: <verified commit>
 worktree: <exact Orca selector and absolute path>
 edit_owner: <one worker profile/Dispatch>
 tester_profile: <confirmed Member 5 profile>
+visual_tester_profile: <confirmed Tester visual profile, or null = Member 5 runs visual stages too>
+visual_stages: <acceptance IDs/stages that need a real browser, desktop window, screenshot or visual diff; [] if none>
 reviewer_profiles: <BE, FE or both as applicable>
 rules: <absolute rule and skill paths available on execution host>
 environment: <isolated ports/database/browser targets; no secrets>
