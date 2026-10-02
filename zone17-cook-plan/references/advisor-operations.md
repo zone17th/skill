@@ -41,7 +41,10 @@ drive letters, tracker names) in the run's team rules, not here.
 7. **Cleanup after merge.** Release the lead Dispatch and close every child
    stage terminal. Before removing the worktree, check that no link or junction
    points outside it, then remove it through Orca. Drop the lane's own
-   databases and other per-lane resources. Record what was cleaned.
+   databases and other per-lane resources. If the lane used a remote test
+   runner, close it from the worktree first (UniWork: `cloud-runner.mjs close`
+   deletes the agent and its results refs) and delete the pushed lane branch.
+   Record what was cleaned.
 8. **Tracker status.** Move an issue only along the tracker's documented flow.
    For example, do not set a review status before a PR exists. When one issue
    spans several slices, comment per accepted slice and leave the status until
@@ -161,6 +164,20 @@ drive letters, tracker names) in the run's team rules, not here.
   recording checksums and listings.
 - **Pin toolchains.** Use the project's pinned runtimes (for example the pinned
   Node major, not a newer system one) in Advisor reruns and worker contracts.
+- **Remote test runner, when the project has one.** Run non-visual checks
+  (unit, contract, targeted integration groups, typecheck, lint, builds) on
+  a cloud runner instead of the host. UniWork has one:
+  `.cursor/cloud/cloud-runner.mjs` on `test/cursor-cloud-env` gives one Cursor
+  cloud VM per worktree, at about 5 cents and 20 s for a warm round.
+  - The Tester stays a separate instance. It writes the spec, drives the runner
+    and reads the raw logs. Its evidence is the runner report, which carries
+    SHA, command, exit code and raw log for each check.
+  - Only the lane's own branch is pushed, and only so the runner can test it.
+    There is still no PR and no push to the integration or default branch.
+  - Visual, browser, desktop-window and packaged-OS stages stay on the host.
+  - Put the exact runner command and rules into the phase team rules and every
+    Tester brief. The G3-G4 `team-rules.md` section "Cloud test runner" is the
+    template.
 
 ## Pause and resume
 
