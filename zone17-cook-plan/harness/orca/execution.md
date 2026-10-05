@@ -23,7 +23,7 @@ Use only a documented supervised launch path and verify its effective model.
 
 The initial main session owns the phase's Advisor role and parent Run until
 the verified handover to the reusable automation session described in
-[Advisor events and recovery](advisor-checkpoint.md). Record one current owner
+[Advisor events and recovery](../../references/advisor-checkpoint.md). Record one current owner
 and route all Advisor wakes to it. A feature Worker can create a child Run
 while keeping its original Task and Dispatch provenance.
 The child Run is for its Tester/Reviewer stage Tasks. Keep parent and child IDs
@@ -198,7 +198,7 @@ next-task dispatch. Neither waits for the 15-minute timer. Deduplicate original
 event IDs across direct delivery, relay and recovery, and keep one active
 consumer per Run. A send receipt proves enqueue, not a resumed Advisor turn;
 track wake/handling receipts separately as described in
-[Advisor events and recovery](advisor-checkpoint.md).
+[Advisor events and recovery](../../references/advisor-checkpoint.md).
 
 Process all rows in a delivered FIFO batch before acknowledging it. Match each
 completion with the current authoritative Task/Dispatch and revision. Choose
@@ -212,7 +212,7 @@ of the revised diff. A completed test/report Task is not retried just because
 the product needs a fix; create the actual follow-up stage. Retry a failed
 execution only through Orca's documented retry path.
 
-Apply the default [Jev decision triggers](jev-decisions.md) on new test/review
+Apply the default [Jev decision triggers](../../references/jev-decisions.md) on new test/review
 reports and before consequential next-owner decisions. Filter eligible owners
 deterministically first; record a rule-based skip for that choice if only one
 remains, while retaining applicable feedback/evidence judgments. Forward
@@ -246,7 +246,7 @@ capacity", proxy/gateway 5xx, stream disconnects and exhausted reconnects. Nudge
 the worker to continue and do not fall back. A launch whose dispatch text
 landed in a shell instead of the agent is a positive launch failure; recover it
 on the same worktree. Both procedures are in
-[Advisor operations](advisor-operations.md).
+[Advisor operations](../../references/advisor-operations.md).
 
 Preserve the revision, evidence, unresolved findings and task/stage identity.
 Ensure the previous editor is fenced/stopped before transferring edit ownership.
@@ -310,7 +310,7 @@ assigned worker, and rerun affected checks/review when integration changes the
 code. Preserve passing evidence for unchanged code when still applicable.
 The Advisor may resolve a purely additive conflict itself and must say so in the
 merge commit. It always reruns the affected checks on the merge result before
-committing it. See [Advisor operations](advisor-operations.md#acceptance).
+committing it. See [Advisor operations](../../references/advisor-operations.md#acceptance).
 
 Before removing a feature worktree, verify acceptance, integration/commit
 reachability, clean tracked and untracked state, durable evidence, settled

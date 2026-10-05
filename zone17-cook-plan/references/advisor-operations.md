@@ -1,7 +1,7 @@
 # Advisor operations
 
 These rules come from running real phases. They add to the acceptance, delivery
-and recovery contracts in [Orca execution](orca-execution.md) and
+and recovery contracts in the selected harness's execution guide (Orca: [execution](../harness/orca/execution.md)) and
 [Advisor events and recovery](advisor-checkpoint.md). The project's own rules
 still win when they are stricter. Keep project-specific values (proxy hosts,
 drive letters, tracker names) in the run's team rules, not here.
@@ -115,7 +115,7 @@ drive letters, tracker names) in the run's team rules, not here.
   4. Record the abandoned Task.
 - **Stuck composer.** A preamble visible in the composer without a started turn
   gets one bare Enter under the stuck-composer rule in
-  [Orca execution](orca-execution.md), followed by turn-start evidence.
+  the selected harness's execution guide (Orca: [execution](../harness/orca/execution.md)), followed by turn-start evidence.
 - **`ask` timeouts.** A worker whose blocking `ask` timed out re-asks or
   escalates. Answer every duplicate with the same decision, and put a one-line
   pointer in the worker's terminal. Say explicitly that the question is

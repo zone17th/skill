@@ -7,8 +7,8 @@ with a `SKILL.md` entrypoint and supporting references.
 
 ### [zone17-cook-plan](zone17-cook-plan/SKILL.md)
 
-Execute a phased implementation plan with parallel Orca teams in isolated
-worktrees. Choose providers and models per role when starting the plan: lead,
+Execute a phased implementation plan with parallel teams in isolated
+worktrees, on Orca by default or another harness. Choose providers and models per role when starting the plan: lead,
 backend/frontend workers, independent reviewers and testers, plus optional
 cloud tester, visual tester and bridge lead. Each role is a comma-separated
 list, primary first and fallbacks after it. Leads run in `coordinator` mode
@@ -50,6 +50,16 @@ added as notes when they come up, not asked at startup.
   project's remote test runner. A deterministic diff comes first and the model only
   classifies it. When the profile is unset, the Tester runs every test stage.
   Tracking and completion requirements come from the current project's rules.
+
+### Harnesses
+
+The skill core is harness-neutral; each runtime lives in
+`zone17-cook-plan/harness/<name>/` with a `HARNESS.md` capability map and an
+execution guide. Select one with `zone17-cook-plan:<name>` (or
+`zone17-cook-plan :<name>` where the agent does not accept a colon in the skill
+name). No suffix means `orca`, the only harness today. An unknown harness stops
+the run instead of falling back. Add a new one by copying
+`harness/_template/`.
 
 ## Install globally
 

@@ -1,7 +1,8 @@
 ---
 name: zone17-cook-plan
 description: >-
-  Execute a phased implementation plan with parallel Orca worktree teams,
+  Execute a phased implementation plan with parallel worktree teams on a
+  selectable harness (`zone17-cook-plan:<harness>`, default Orca),
   user-selected providers and models, autonomous worker/test/review loops,
   Jev typed decisions, immediate Advisor handling of worker completion, and
   a 15-minute recovery watchdog for interrupted workflows.
@@ -22,6 +23,22 @@ exclusive ownership. Keep implementation moving in many small parallel
 teams; do not make the Advisor monitor terminal logs or approve each routine
 handoff.
 
+## Select the harness
+
+The harness is the runtime that starts sessions, isolates checkouts, carries
+messages and schedules wakes. Read it from the invocation suffix:
+`zone17-cook-plan:<harness>`, or `zone17-cook-plan :<harness>` /
+`harness=<harness>` as the first argument where a colon in the skill name is
+not supported. No suffix means `orca`.
+
+Load `harness/<harness>/HARNESS.md` before step 2 below and follow its
+required tools, capability map and guides wherever this skill says "the
+harness". If that folder does not exist, stop and tell the user the harness is
+not supported yet; never fall back to another harness silently. Record the
+harness in the run manifest. One run uses one harness; resuming with a
+different suffix is a question for the user, not a switch. New harnesses start
+from `harness/_template/`.
+
 ## Start or resume
 
 1. Read the plan and current host, workspace and repository requirements,
@@ -30,12 +47,15 @@ handoff.
    criteria and authorization. Discover required setup, checks, tracking and
    merge rules from that project; never carry another project's requirements
    into it. A phase's main branch need not be `main`; verify the merge target.
-2. Read `orchestration` and `orca-cli`, resolve their selected Orca executable,
-   and load its version-matched guides. Read `typesafe-ai` and
+2. Load the harness's required tools and guides (Orca: `orchestration` and
+   `orca-cli`, resolve their selected executable and load its version-matched
+   guides). Read `typesafe-ai` and
    [Jev decisions](references/jev-decisions.md) before task dispatch; include
    the default judgment triggers and decision-record policy in team contracts.
-   These are real dependencies: use Orca Runs, Tasks, Dispatches and messages,
-   not another provider's native subagents as a substitute.
+   These are real dependencies: use the harness's runs, tasks, attempts and
+   messages, not another provider's native subagents as a substitute (a lead's
+   in-process subagents noted in the roster are workers inside its lane, not a
+   replacement for the harness).
 3. Recover an existing run before creating anything. Keep a small durable run
    manifest inside an authorized workspace, separate from disposable feature
    worktrees. Store addresses, task contracts, artifact pointers, model choices,
@@ -55,7 +75,8 @@ handoff.
    does not need an issue key, tracking service or additional coordinator to start.
    Pass discovered requirements to workers and recheck them when moving hosts
    or checkouts.
-6. Read [Orca execution](references/orca-execution.md) to start the first wave,
+6. Read the harness's execution guide (Orca:
+   [execution](harness/orca/execution.md)) to start the first wave,
    and [Advisor events and recovery](references/advisor-checkpoint.md) before
    enabling background supervision. Verify immediate event-driven wakeup and
    the separate recovery timer before the Advisor goes dormant.
@@ -120,7 +141,7 @@ execution host and available concurrency per profile when known.
 The roster sets the default mode and focus; a feature contract may override both
 for its lane (`lead_mode`, `lead_focus`). A lead whose provider has in-process
 subagents may use them as its workers when its roster entry notes it; they
-follow the same contracts, owned paths and caps as Orca workers. Workers in one
+follow the same contracts, owned paths and caps as harness workers. Workers in one
 lane own disjoint paths or their own checkout; the lead merges them.
 
 Name every session `<role>-<lane_slug> (<issue>)`, adding ` rN` for round or
@@ -139,7 +160,8 @@ instance on the Advisor profile; it cannot self-review that code. If no eligible
 instance/capacity exists, retain the affected gate as pending and continue other
 ready work. Verify primary availability and hand back at a safe stage boundary;
 do not restart the task or permit two simultaneous edit owners. Follow
-[fallback and recovery](references/orca-execution.md#fallback-and-recovery).
+fallback and recovery in the harness's execution guide (Orca:
+[fallback and recovery](harness/orca/execution.md#fallback-and-recovery)).
 
 ## Divide for parallel progress
 
@@ -149,7 +171,7 @@ Split independent units aggressively and launch the whole ready wave before
 waiting. Limit concurrency only for real dependencies, editing conflicts,
 environment isolation, provider limits or available resources.
 
-Use one isolated Orca worktree per independently edited unit. Record its exact
+Use one isolated harness worktree per independently edited unit. Record its exact
 branch, base SHA, owner and environment. One worker owns edits in that checkout.
 Separate cross-cutting contracts first, then parallelize their consumers.
 Do not split tightly coupled work merely to increase the agent count.
@@ -175,8 +197,8 @@ review/fix loop until blocking findings are resolved. Review fixes always return
 through relevant testing. Preserve passing evidence for unchanged code; invalidate
 evidence and reviews that no longer cover the submitted revision or environment.
 
-Each feature has one Lead in the mode its contract names. It runs a child Orca
-Run to dispatch Worker, Tester and Reviewer profiles and process their replies.
+Each feature has one Lead in the mode its contract names. It runs a child
+run to dispatch Worker, Tester and Reviewer profiles and process their replies.
 This is a routing duty, not a new decision-making role. It cannot accept its own
 feature, broaden scope, merge the phase branch, or bypass project completion
 gates. This structure allows feature loops to continue while the Advisor is dormant.
@@ -187,7 +209,7 @@ with its original event IDs; the lead continues the normal loop without waiting
 for Advisor approval. A feature lead's own completion goes directly to Advisor
 for acceptance or failure recovery. Never defer a completion to the timer.
 
-Workers, testers and reviewers discuss findings through Orca messages. Use
+Workers, testers and reviewers discuss findings through harness messages. Use
 Jev by default for semantic judgments at dispatch, test/review handoffs,
 next-owner selection, browser checkpoints, recovery and acceptance preparation.
 Use code for known transitions and facts. Unclear requirements, disputed
@@ -200,7 +222,7 @@ separate facts. A message enqueued, text in a composer, or `accepted: true` is
 not proof that a turn started. The sender/lead or receiving wake bridge retains
 delivery responsibility until start/handling evidence exists. Check promptly;
 do not leave an unsubmitted prompt for the 15-minute watchdog. Follow the
-submission and recovery rules in [Orca execution](references/orca-execution.md).
+submission and recovery rules in the harness's execution guide.
 Use supervised starts for stage Tasks; never replace them with raw prompts.
 
 ## Jev and browser work
@@ -218,7 +240,8 @@ Reuse fresh judgments for unchanged evidence. Record actual requests and
 decision outcomes in checkpoints and report Jev's contribution before sleep.
 Service failures use the documented fallback; do not claim a call succeeded.
 
-All browser interaction uses Orca CLI and Orca's embedded browser. Tester owns
+All browser interaction uses the harness's browser (Orca: the embedded browser
+through the Orca CLI). Tester owns
 its page IDs and follows snapshot -> interaction -> fresh snapshot. Jev can
 select an observed candidate or interpret a message; it cannot invent page
 elements, replace actual browser actions or declare a test passed.
@@ -264,7 +287,7 @@ humans. If a human merge is required, report ready-for-merge and retain work.
 After integration, verify required checks on the resulting branch. Preserve
 evidence outside disposable worktrees, confirm commits are reachable, settle
 all Dispatches, release/retain their resources explicitly, and remove only the
-accepted task's clean worktree through Orca. Do not force-delete dirty, live,
+accepted task's clean worktree through the harness. Do not force-delete dirty, live,
 unmerged or unverifiable work. Record final evidence through the project's
 required reporting route when configured; honor its completion permissions.
 

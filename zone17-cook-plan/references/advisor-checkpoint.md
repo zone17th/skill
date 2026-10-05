@@ -109,7 +109,7 @@ proves enqueue only. Require evidence of a resumed turn and processed event
 before claiming Advisor handled it.
 
 The wake bridge must verify submission as well as enqueue, following
-[Orca execution](orca-execution.md). An unsubmitted prompt is a pending wake,
+the selected harness's execution guide (Orca: [execution](../harness/orca/execution.md)). An unsubmitted prompt is a pending wake,
 not a resumed Advisor. Attempt safe documented recovery immediately; do not
 wait for the timer or require the settled sender to keep polling. A busy
 Advisor needs processing acknowledgement of the event, not another injected

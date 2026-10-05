@@ -5,6 +5,7 @@
 Persist only operational memory needed to resume:
 
 - Run ID, plan/version, phase, integration branch/base SHA, workspace root.
+- Harness name (`orca` when the invocation had no suffix); fixed for the run.
 - Initial Advisor session, current Advisor session/host and verified Orca
   coordinator address; applicable host/project rule paths and any project-required
   tracking/reporting route. Populate project-specific fields only when applicable.
@@ -181,7 +182,7 @@ decisions. Preserve the producer message ID for deduplication; it is not a CLI
 retry token. Use only the transport's documented retry method and actual
 runtime-issued request ID where required. A successful enqueue is not proof
 of receipt or action. Track execution/handling as described in
-[Orca execution](orca-execution.md); do not report a handoff running from typed
+the selected harness's execution guide (Orca: [execution](../harness/orca/execution.md)); do not report a handoff running from typed
 but unsubmitted text. Stale revisions do not overwrite current outcomes.
 
 ## Feedback handling
