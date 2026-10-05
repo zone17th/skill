@@ -61,9 +61,10 @@ mutable test databases, output directories, ports or browser pages.
 ORCA orchestration worker-start --spec "<test or review contract>" --worktree id:<complete_worktree_id> --agent <confirmed_agent> --model <confirmed_model> --json
 ```
 
-A lead that coordinates a child Run still implements its own assigned feature.
-It dispatches independent stages as fresh attempts and never reviews its own
-code. Members can communicate directly through discovered Orca addresses when
+A lead in `working` mode implements the tasks its focus keeps and dispatches
+the rest to workers; a `coordinator` lead implements nothing itself. Either
+way it dispatches independent stages as fresh attempts and never tests or
+reviews its own code. Members can communicate directly through discovered Orca addresses when
 authorized. If a peer/sibling address is not available under their capabilities,
 route through the child Run's lead; do not forge membership or `--from`.
 
@@ -235,12 +236,10 @@ recovery; integration and project completion still follow their own gates.
 ## Fallback and recovery
 
 When a launcher/model is unavailable or an attempt has positively failed/stopped,
-use the affected member's configured fallback: Member 1 -> optional BE Worker
-fallback; Member 2 -> Fallback FE Worker; Member 3 -> optional BE Reviewer
-fallback; Member 4 -> Fallback FE Reviewer. Every fallback may be unset. If unset
-or unavailable, the Advisor handles that role temporarily on its confirmed
-provider/model; do not repeatedly request fallback configuration or select an
-unconfirmed provider/model.
+move the role to the next entry in its comma-separated roster list. A
+one-entry list has no fallback. When the list is exhausted, the Advisor handles
+that role temporarily on its confirmed provider/model; do not repeatedly
+request fallback configuration or select an unconfirmed provider/model.
 
 Transient provider errors are not failures. These include rate limits, "model at
 capacity", proxy/gateway 5xx, stream disconnects and exhausted reconnects. Nudge

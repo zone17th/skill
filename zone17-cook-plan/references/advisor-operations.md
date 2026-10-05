@@ -54,7 +54,7 @@ drive letters, tracker names) in the run's team rules, not here.
 
 - **Who runs it.** Stages listed in the contract's `visual_stages` go to the
   Tester visual profile when one is configured. When it is unset, every test
-  stage, visual or not, goes to Member 5 (Tester). The rules below apply to
+  stage, visual or not, goes to the Tester. The rules below apply to
   whoever runs the stage.
 - **Deterministic diff first.** Use screenshot assertions or pixel diff with a
   declared tolerance against a committed baseline or the project's oracle. The

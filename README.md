@@ -8,12 +8,15 @@ with a `SKILL.md` entrypoint and supporting references.
 ### [zone17-cook-plan](zone17-cook-plan/SKILL.md)
 
 Execute a phased implementation plan with parallel Orca teams in isolated
-worktrees. Choose providers and models for backend/frontend workers, independent
-reviewers and testers when starting the plan. Fallbacks are optional: ask for
-BE Worker/Reviewer fallbacks; FE Worker/Reviewer use their dedicated fallback
-profiles. When a fallback is unset or unavailable, Advisor handles the role
-temporarily until the primary provider/model is ready, preserving independent
-review and handing back at a safe stage boundary.
+worktrees. Choose providers and models per role when starting the plan: lead,
+backend/frontend workers, independent reviewers and testers, plus optional
+cloud tester, visual tester and bridge lead. Each role is a comma-separated
+list, primary first and fallbacks after it. Leads run in `coordinator` mode
+(triage and dispatch only) or `working` mode (implement too, with an optional
+focus such as "hard tasks" or "FE tasks"). When a list is exhausted, Advisor
+handles the role temporarily, preserving independent review and handing back
+at a safe stage boundary. Provider conditions such as peak hours or quotas are
+added as notes when they come up, not asked at startup.
 
 - Advisor decomposes work, resolves escalations, accepts features and controls
   authorized integration. Independent teams run their own test/fix/review loops.
@@ -43,7 +46,8 @@ review and handing back at a safe stage boundary.
   - host resource limits
   - pause/resume and the decision record
 - An optional Tester visual profile takes browser, desktop-window, screenshot
-  and visual-diff stages. A deterministic diff comes first and the model only
+  and visual-diff stages; an optional Tester cloud profile takes rounds on the
+  project's remote test runner. A deterministic diff comes first and the model only
   classifies it. When the profile is unset, the Tester runs every test stage.
   Tracking and completion requirements come from the current project's rules.
 

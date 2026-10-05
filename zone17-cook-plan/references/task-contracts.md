@@ -16,10 +16,10 @@ Persist only operational memory needed to resume:
   source/cursor and last counted event. Persist outside the provider context.
   Record pending rotation, checkpoint path, old/replacement session IDs, handover
   stage, exclusive-owner receipts, wake-route verification and failure reason.
-- Confirmed primary role profiles, optional fallback mappings (explicit `null`
-  when unset), capacity and effective launches. Map Member 2 to Fallback FE
-  Worker and Member 4 to Fallback FE Reviewer; keep BE fallbacks for Member 1
-  and Member 3 separate. Default an unset/unavailable fallback to Advisor.
+- Confirmed role profiles as ordered comma-separated lists (primary first,
+  then fallbacks), lead default mode and focus, free-text provider notes the
+  user added during the run, capacity and effective launches. An exhausted
+  list defaults the role to the Advisor.
   Record temporary ownership, primary unavailability evidence and handback
   readiness/checkpoint so recovery preserves current work.
 - Jev policy/question version, decision-record location, cache freshness policy,
@@ -90,9 +90,13 @@ dependencies: <real prerequisites and contract versions>
 integration_branch: <resolved branch>
 base_sha: <verified commit>
 worktree: <exact Orca selector and absolute path>
-edit_owner: <one worker profile/Dispatch>
-tester_profile: <confirmed Member 5 profile>
-visual_tester_profile: <confirmed Tester visual profile, or null = Member 5 runs visual stages too>
+edit_owner: <lead Dispatch; workers own the paths it assigns them>
+lead_mode: <coordinator | working; default from the roster>
+lead_focus: <optional free text for working mode, e.g. "hard tasks first", "FE tasks"; null = task that blocks the most work>
+worker_profiles: <BE, FE or both, as roster lists>
+tester_profile: <confirmed Tester list>
+cloud_tester_profile: <Tester cloud list, or null = Tester drives the runner; null too when the project has no runner>
+visual_tester_profile: <Tester visual list, or null = Tester runs visual stages too>
 visual_stages: <acceptance IDs/stages that need a real browser, desktop window, screenshot or visual diff; [] if none>
 reviewer_profiles: <BE, FE or both as applicable>
 rules: <absolute rule and skill paths available on execution host>
@@ -102,7 +106,7 @@ decision_route: <actual parent Run/Advisor address>
 completion_route: <verified immediate Advisor wake/relay and source event IDs>
 handoff_route: <verified submission/wake adapter and delivery verification owner>
 tracking_route: <project-required reporting route or null>
-fallback_policy: <optional confirmed role fallback or null; unset/unavailable -> Advisor until primary ready>
+fallback_policy: <next entry in the role's list; list exhausted -> Advisor until an entry is ready>
 jev_policy: <default triggers, decision-record location and freshness policy>
 ```
 

@@ -74,33 +74,64 @@ These are role profiles, not a limit of one terminal per role. Instantiate the
 same confirmed profile in multiple independent feature teams when capacity
 allows. A reviewer is a separate agent instance from that feature's author.
 
-| Member | Responsibility | Provider/model selection |
+| Role | Responsibility | Selection |
 | --- | --- | --- |
-| Advisor | Initial decomposition, immediate completion handling and next-task dispatch, unresolved decisions, acceptance, integration, recovery and temporary handling of roles without an available fallback | Initial main session, then reused automation session after handover; preserve confirmed provider/model |
-| Member 1: BE Worker | Backend implementation and fixes; coordinates its feature team | Ask primary provider/model and optional BE Worker fallback provider/model |
-| Member 2: FE Worker | Frontend implementation and fixes; coordinates its feature team | Ask primary provider/model; fallback is the optional Fallback FE Worker profile below |
-| Member 3: BE Reviewer | Identify concrete backend bugs, regressions, risks and missing verification | Ask primary provider/model and optional BE Reviewer fallback provider/model |
-| Member 4: FE Reviewer | Identify frontend bugs, UX/accessibility/responsiveness risks and missing verification | Ask primary provider/model; fallback is the optional Fallback FE Reviewer profile below |
-| Member 5: Tester | Run actual tests, operate Orca browser, capture reproducible evidence | Ask |
-| Tester visual | Stages that need a real browser, desktop windows/computer use, screenshots or visual diff; classifies deterministic diffs | Ask optionally; unset means every test stage, visual ones included, goes to Member 5 |
-| Fallback FE Worker | Optional fallback for Member 2 | Ask optionally; unset means Advisor handles the role temporarily |
-| Fallback FE Reviewer | Optional fallback for Member 4; retain independent review | Ask optionally; unset means Advisor handles the role temporarily |
+| Advisor | Initial decomposition, immediate completion handling and next-task dispatch, unresolved decisions, acceptance, integration, recovery and temporary handling of roles whose list is exhausted | Initial main session, then reused automation session after handover; preserve confirmed provider/model |
+| Lead | Owns one feature lane: its child Run, stage and worker dispatch, merging its workers' commits, the acceptance packet. Mode `coordinator` or `working`, see [Lead modes](#lead-modes) | Ask; also ask the default mode and optional focus |
+| BE Worker | Backend implementation and fix tasks given by a lead or the Advisor | Ask |
+| FE Worker | Frontend implementation and fix tasks given by a lead or the Advisor | Ask |
+| BE Reviewer | Identify concrete backend bugs, regressions, risks and missing verification | Ask |
+| FE Reviewer | Identify frontend bugs, UX/accessibility/responsiveness risks and missing verification | Ask |
+| Tester | Run actual tests, capture reproducible evidence | Ask |
+| Tester cloud | One fresh session per round on the project's remote test runner; drives the runner and reads its logs, edits nothing | Optional; only when the project has a runner. Unset means Tester |
+| Tester visual | Stages that need a real browser, desktop windows/computer use, screenshots or visual diff; classifies deterministic diffs and scores UI quality | Optional; unset means Tester |
+| Bridge lead | Local relay for a lane whose lead runs on a remote host: reads the remote lead and child Run, nudges, mirrors status and questions to the Advisor; edits nothing | Optional; only with remote hosts. Unset means the Advisor relays |
 | Jev | Narrow typed judgments for everyone in the team | TypeSafe, `jev-latest` unless the user selects another available Jev model |
 
-Collect `provider/agent`, exact `model`, optional supported `effort`, execution
-host, and available concurrency for each selected profile. All fallback choices
-are optional; record an unset fallback as `null`, not an unanswered requirement.
-Member 1 and Member 3 have their own BE fallbacks; Member 2 and Member 4 use
-Fallback FE Worker and Fallback FE Reviewer respectively, without another
-duplicate FE fallback setting. Tester visual is optional and needs no fallback
-of its own. When it is unset or unavailable, Member 5 takes its stages. The previously mentioned `claude-opus-5` and
-`terra` remain optional FE Worker candidates, not automatic defaults. If chosen,
-confirm their exact provider/model mappings and order. Keep credentials in each
-provider's existing configuration.
+Write each role's profile as a comma-separated list. The first entry is the
+primary and the rest are fallbacks, tried in that order; no separate fallback
+setting exists. One entry is `<agent> <model> [effort]`, for example
+`claude claude-sonnet-5-5 high, codex gpt-6-astra high`. A one-entry list has
+no fallback. Ask for every required role's list in one question, in the user's
+language; reuse confirmed lists and never invent an entry.
+
+Provider-specific conditions (peak-hour windows, quotas, extra accounts, child
+caps, launch quirks) are not part of the roster and are not asked at startup:
+not every provider has them. When the user states one during the run, attach it
+as a free-text note to the affected entry in the run's team rules, quoting the
+user, and apply it from then on.
+
+Keep credentials in each provider's existing configuration. Record the
+execution host and available concurrency per profile when known.
+
+### Lead modes
+
+- `coordinator`: the lead triages, splits every failure list by area into
+  disjoint fix tasks for parallel workers, merges their commits and verifies.
+  It edits no product code. Above the project's large-failure threshold it
+  sends the Advisor a triage plan and waits for an answer before dispatching.
+- `working`: the lead also implements tasks itself and dispatches the rest to
+  workers in parallel. An optional free-text `focus` says which tasks it keeps,
+  for example "hard tasks first", "FE tasks", "BE tasks" or "critical path".
+  Without a focus it keeps the task that blocks the most other work. It keeps
+  its workers busy up to the cap between its own commits and still never
+  tests or reviews its own code.
+
+The roster sets the default mode and focus; a feature contract may override both
+for its lane (`lead_mode`, `lead_focus`). A lead whose provider has in-process
+subagents may use them as its workers when its roster entry notes it; they
+follow the same contracts, owned paths and caps as Orca workers. Workers in one
+lane own disjoint paths or their own checkout; the lead merges them.
+
+Name every session `<role>-<lane_slug> (<issue>)`, adding ` rN` for round or
+retry N, with role one of `advisor`, `lead`, `worker`, `reviewer_be`,
+`reviewer_fe`, `tester`, `tester_cloud`, `tester_visual` or `bridge`. Use it as
+the task title and rename the terminal right after start; re-apply it when an
+agent overwrites the title.
 
 Check runtime launch support, then compare requested and effective launch
-receipts. An unavailable primary uses its configured fallback. If that fallback
-is unset or also unavailable, the Advisor temporarily performs the affected
+receipts. An unavailable entry moves the role to the next entry in its list.
+When the list is exhausted, the Advisor temporarily performs the affected
 role using its own confirmed provider/model until the primary becomes available.
 Record temporary ownership and preserve the task checkpoint, evidence and
 independent review. An Advisor that authored the code uses a separate reviewer
@@ -132,8 +163,8 @@ automatically inherit this session's instructions or installed skills.
 
 ```text
 Advisor assigns a bounded feature
-  -> Worker implements
-  -> Tester runs checks -> Worker fixes -> Tester reruns affected checks
+  -> Lead implements (working mode) and dispatches Workers in parallel
+  -> Tester runs checks -> Workers fix -> Tester reruns affected checks
   -> Reviewer reviews tested revision -> Worker fixes
   -> Tester verifies fixes -> Reviewer verifies revised code
   -> Advisor accepts the complete feature and controls integration
@@ -144,8 +175,8 @@ review/fix loop until blocking findings are resolved. Review fixes always return
 through relevant testing. Preserve passing evidence for unchanged code; invalidate
 evidence and reviews that no longer cover the submitted revision or environment.
 
-The assigned worker is also its feature's coordination lead. It may run a child
-Orca Run to dispatch Tester and Reviewer profiles and process their replies.
+Each feature has one Lead in the mode its contract names. It runs a child Orca
+Run to dispatch Worker, Tester and Reviewer profiles and process their replies.
 This is a routing duty, not a new decision-making role. It cannot accept its own
 feature, broaden scope, merge the phase branch, or bypass project completion
 gates. This structure allows feature loops to continue while the Advisor is dormant.
@@ -195,7 +226,7 @@ elements, replace actual browser actions or declare a test passed.
 Contracts mark which stages are visual. That covers browser e2e,
 render/fidelity, theme/zoom/responsive layout and packaged desktop runs. Those
 stages go to the Tester visual profile when one is set; otherwise they go to
-Member 5. Either way the stage follows
+the Tester. Either way the stage follows
 [visual testing](references/advisor-operations.md#visual-testing): a
 deterministic diff comes first, the model only classifies it, and screenshots
 never prove save, permission or data-isolation behaviour.
