@@ -101,8 +101,8 @@ allows. A reviewer is a separate agent instance from that feature's author.
 | Lead | Owns one feature lane: its child Run, stage and worker dispatch, merging its workers' commits, the acceptance packet. Mode `coordinator` or `working`, see [Lead modes](#lead-modes) | Ask; also ask the default mode and optional focus |
 | BE Worker | Backend implementation and fix tasks given by a lead or the Advisor | Ask |
 | FE Worker | Frontend implementation and fix tasks given by a lead or the Advisor | Ask |
-| BE Reviewer | Identify concrete backend bugs, regressions, risks and missing verification | Ask |
-| FE Reviewer | Identify frontend bugs, UX/accessibility/responsiveness risks and missing verification | Ask |
+| BE Reviewer | Identify concrete backend bugs, regressions, risks and missing verification, by the [review method](references/review-method.md) | Ask |
+| FE Reviewer | Identify frontend bugs, UX/accessibility/responsiveness risks and missing verification, by the [review method](references/review-method.md) | Ask |
 | Tester | Run actual tests, capture reproducible evidence | Ask |
 | Tester cloud | One fresh session per round on the project's remote test runner; drives the runner and reads its logs, edits nothing | Optional; only when the project has a runner. Unset means Tester |
 | Tester visual | Stages that need a real browser, desktop windows/computer use, screenshots or visual diff; classifies deterministic diffs and scores UI quality | Optional; unset means Tester |
@@ -191,6 +191,11 @@ Advisor assigns a bounded feature
   -> Tester verifies fixes -> Reviewer verifies revised code
   -> Advisor accepts the complete feature and controls integration
 ```
+
+Reviewers follow the [review method](references/review-method.md): parallel
+lenses (BMAD's when installed), then their own triage, a `full` round first and
+`delta` rounds after fixes. No role runs `bmad-code-review`, `bmad-build-auto`
+or `bmad-walkthrough` inside a lane; they wait for a person or orchestrate.
 
 Repeat the inner test/fix loop until evidence is sufficient, and the outer
 review/fix loop until blocking findings are resolved. Review fixes always return

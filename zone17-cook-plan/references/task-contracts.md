@@ -100,6 +100,7 @@ cloud_tester_profile: <Tester cloud list, or null = Tester drives the runner; nu
 visual_tester_profile: <Tester visual list, or null = Tester runs visual stages too>
 visual_stages: <acceptance IDs/stages that need a real browser, desktop window, screenshot or visual diff; [] if none>
 reviewer_profiles: <BE, FE or both as applicable>
+review_method: <absolute path to references/review-method.md on the execution host; review_round full | delta per stage>
 rules: <absolute rule and skill paths available on execution host>
 environment: <isolated ports/database/browser targets; no secrets>
 report_destination: <durable path outside disposable worktree>
@@ -124,7 +125,8 @@ stage `worker_done` settles that stage; it does not settle feature acceptance.
 A tester/reviewer can successfully complete an investigation that finds a bug.
 Its report must separate `stage_outcome` (report produced or execution failed)
 from `test_verdict` (`pass`, `fail`, `blocked`, `not_run`) or `review_verdict`
-(`clear`, `changes_required`, `blocked`). If that stage's contract explicitly
+(`clear`, `changes_required`, `blocked`). Reviewers derive the verdict and
+finding fields as the [review method](review-method.md#report) maps them. If that stage's contract explicitly
 requires passing tests, failed tests mean a failed stage. Always route from
 the actual verdict; never infer product correctness from lifecycle success.
 

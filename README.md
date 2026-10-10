@@ -45,6 +45,10 @@ added as notes when they come up, not asked at startup.
   - nudge-not-fallback for transient provider errors
   - host resource limits
   - pause/resume and the decision record
+- Reviewers follow the [review method](zone17-cook-plan/references/review-method.md):
+  parallel lenses (BMAD's `bmad-review` lenses when installed, plus an FE
+  quality lens), their own verify-and-grade triage, a full first round and
+  delta rounds after fixes. Interactive BMAD workflows never run inside a lane.
 - An optional Tester visual profile takes browser, desktop-window, screenshot
   and visual-diff stages; an optional Tester cloud profile takes rounds on the
   project's remote test runner. A deterministic diff comes first and the model only
