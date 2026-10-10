@@ -208,6 +208,12 @@ This is a routing duty, not a new decision-making role. It cannot accept its own
 feature, broaden scope, merge the phase branch, or bypass project completion
 gates. This structure allows feature loops to continue while the Advisor is dormant.
 
+Cleanup is a standing duty, never a user request: leads remove each merged
+fix/stage worktree, branch, database and process inside their lane as they go,
+and the Advisor sweeps sessions, worktrees (every host and repository) and
+per-lane data on every pass. See
+[standing cleanup](references/advisor-operations.md#standing-cleanup-every-pass-unprompted).
+
 Every `worker_done` triggers immediate handling and Advisor notification. A
 child-stage completion is processed by its feature lead and relayed to Advisor
 with its original event IDs; the lead continues the normal loop without waiting

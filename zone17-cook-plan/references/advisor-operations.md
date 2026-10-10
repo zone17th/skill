@@ -179,6 +179,39 @@ drive letters, tracker names) in the run's team rules, not here.
     Tester brief. The G3-G4 `team-rules.md` section "Cloud test runner" is the
     template.
 
+## Standing cleanup (every pass, unprompted)
+
+The user should never have to ask for cleanup. On every Advisor pass, and
+whenever a lane, stage or fix task settles, sweep without being asked:
+
+- **Sessions.** Release settled worker/stage Dispatches and close their
+  terminals, including dead tabs a release leaves behind. Keep leads whose work
+  still feeds an integration step and anything still running a suite.
+- **Worktrees, on every host and every repository of the run** (local, remote
+  hosts, the main repo and any fork or sibling repo). Remove a worktree when its
+  branch is reachable from the lane, root or default branch (or its PR is
+  merged), its tree is clean or its untracked files were saved as evidence, and
+  no live terminal uses it. Before removal, unlink any link or junction that
+  points outside it (remove the link, never its target), and check that no
+  other kept worktree links into it. After `orca worktree rm`, read back
+  `git worktree list` and the directory: a removal can report ok while the
+  directory still exists, so delete leftovers once nothing references them.
+  Delete the merged local branch; never delete a remote branch the user still
+  needs (an open PR, a lane pushed for the runner until the lane closes).
+- **Data.** Drop the per-lane and per-stage databases of removed worktrees
+  (DROP can wait on checkpoints; run it in the background), remove per-stage
+  object-storage buckets, stop stacks and free their ports, close remote
+  runner agents of finished lanes, and delete stale build/temp caches.
+- **Leads do the same inside their lane.** A lead removes each fix/stage
+  worktree and branch as soon as it merges that work into the lane, and closes
+  its runner agents and stage stacks when the stage ends. The lane is not
+  DONE until its own sub-worktrees, databases and processes are gone; say what
+  was cleaned in the DONE message.
+- **Never** delete evidence, frozen trees, baselines, worktrees with unsaved
+  work, or anything a live session still uses; kill processes by PID, never by
+  image name. Record what was cleaned (and what was kept, with the reason) in
+  the checkpoint.
+
 ## Pause and resume
 
 - **Pause.** Create the pause marker that every scheduler precheck and nudger
