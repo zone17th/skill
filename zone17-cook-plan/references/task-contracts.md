@@ -91,6 +91,7 @@ dependencies: <real prerequisites and contract versions>
 integration_branch: <resolved branch>
 base_sha: <verified commit>
 worktree: <exact Orca selector and absolute path>
+worktree_reason: <why a new checkout was needed, or "reuse lead/stage checkout" (SKILL.md Worktree budget)>
 edit_owner: <lead Dispatch; workers own the paths it assigns them>
 lead_mode: <coordinator | working; default from the roster>
 lead_focus: <optional free text for working mode, e.g. "hard tasks first", "FE tasks"; null = task that blocks the most work>

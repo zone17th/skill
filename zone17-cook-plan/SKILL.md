@@ -142,7 +142,12 @@ The roster sets the default mode and focus; a feature contract may override both
 for its lane (`lead_mode`, `lead_focus`). A lead whose provider has in-process
 subagents may use them as its workers when its roster entry notes it; they
 follow the same contracts, owned paths and caps as harness workers. Workers in one
-lane own disjoint paths or their own checkout; the lead merges them.
+lane edit in the lead's worktree by default (a coordinator lead codes nothing, so
+the checkout is free): one editing worker there at a time, or several on disjoint
+paths that never commit concurrently. Only a worker that must edit in parallel
+with another, on overlapping paths or with its own builds/tests, gets its own
+checkout; the lead merges it and removes it at once. See
+[Worktree budget](#worktree-budget).
 
 Name every session `<role>-<lane_slug> (<issue>)`, adding ` rN` for round or
 retry N, with role one of `advisor`, `lead`, `worker`, `reviewer_be`,
@@ -175,6 +180,27 @@ Use one isolated harness worktree per independently edited unit. Record its exac
 branch, base SHA, owner and environment. One worker owns edits in that checkout.
 Separate cross-cutting contracts first, then parallelize their consumers.
 Do not split tightly coupled work merely to increase the agent count.
+
+### Worktree budget
+
+Spawn a worktree or session only when no existing one can do the job. Before
+every `--worktree new-*` or new session, name the reason in the contract
+(parallel editor, different repo/host, a lane head); "a new stage round" is never
+a reason.
+
+- A lane owns its head worktree (the lead's). Workers edit there by default.
+- Testers, cloud testers, visual testers and reviewers edit nothing. They run in
+  the lead's checkout while editing pauses, or in ONE standing read-only stage
+  checkout per lane that each round re-points (`git checkout --detach <sha>`).
+  Never one checkout per stage, role or round.
+- A second worker that must edit in parallel gets its own checkout; it is removed
+  as soon as its commit is merged into the lane.
+- Cap: lane head + one stage checkout + live parallel editors, at most 5 per lane.
+  The Advisor counts worktrees per lane on every host each pass and removes
+  merged extras ([standing cleanup](references/advisor-operations.md#standing-cleanup-every-pass-unprompted)).
+- The same rule holds for sessions: reuse a settled stage session's slot (release
+  it first) rather than leaving it idle, and do not start a session for work an
+  existing live session of the same role and lane can take.
 
 Give every team a self-contained contract from
 [task and message contracts](references/task-contracts.md), including the

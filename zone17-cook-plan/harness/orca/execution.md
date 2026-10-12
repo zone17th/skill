@@ -54,8 +54,12 @@ Within a feature, dispatch stages into the exact existing checkout or an
 isolated snapshot of the same commit. Tester and Reviewer do not edit production
 files. Tests may write generated artifacts only in the agreed environment.
 Pause the edit owner while testing/reviewing a mutable checkout; otherwise use
-an immutable commit in a separate checkout. Parallel readers must not share
-mutable test databases, output directories, ports or browser pages.
+an immutable commit in the lane's single standing stage checkout, re-pointed
+with `git checkout --detach <sha>` each round (create it once, with
+`--worktree new-top-level`, only when the lane has none). Never create a
+checkout per stage, role or round; see the Worktree budget in SKILL.md. Parallel
+readers must not share mutable test databases, output directories, ports or
+browser pages; give them separate DB names/ports, not separate checkouts.
 
 ```text
 ORCA orchestration worker-start --spec "<test or review contract>" --worktree id:<complete_worktree_id> --agent <confirmed_agent> --model <confirmed_model> --json

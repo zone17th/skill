@@ -202,6 +202,10 @@ whenever a lane, stage or fix task settles, sweep without being asked:
   (DROP can wait on checkpoints; run it in the background), remove per-stage
   object-storage buckets, stop stacks and free their ports, close remote
   runner agents of finished lanes, and delete stale build/temp caches.
+- **Worktree count per lane.** Count worktrees per lane on every host. More than
+  the Worktree budget in SKILL.md allows (lane head + one stage checkout + live
+  parallel editors, max 5) means the lead is spawning per round: remove the
+  merged extras and remind the lead of the budget in the same pass.
 - **Leads do the same inside their lane.** A lead removes each fix/stage
   worktree and branch as soon as it merges that work into the lane, and closes
   its runner agents and stage stacks when the stage ends. The lane is not
