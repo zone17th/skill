@@ -89,7 +89,7 @@ yield is invalid even when its Run ID happens to match.
    while a real Advisor owner is active, no duplicate consumers during an event
    wake, and no launches while paused. For default mode 2, compare actual
    provider session IDs across cycles: reuse the same available automation
-   session unless a verified compaction-threshold handover is due. A reused
+   session unless a verified handover is due. A reused
    workspace/tab name alone is insufficient. Verify
    both timer and completion-event wakes target that current Advisor, including
    after the initial handover. Exercise stop/pause in an isolated probe
@@ -105,15 +105,10 @@ loss. Record the replacement session, same Run/checkpoint, exclusive binding
 and updated wake route. Never close a healthy Advisor merely to force this
 case. A fresh session on every normal tick fails the default reuse contract.
 
-Verify [compaction rotation](advisor-checkpoint.md#rotate-after-10-compactions)
-in isolation: nine observed compactions retain the session; the tenth requests
-one handover at a safe boundary. Replaying an event must not increment twice,
-and resuming the same session must retain its count. Missing counter evidence
-stays unknown. Verify a new provider session ID, compact checkpoint recovery,
-single ownership, retained workers and pending events, then both an event wake
-and a naturally triggered schedule reuse of that new Advisor. Do not force ten
-compactions on the live Advisor merely to test the threshold. A simulated counter
-tests policy only; real provider-event detection remains a separate proof.
+Verify an [Advisor handover](advisor-checkpoint.md#hand-over-to-a-replacement-advisor)
+in isolation or at a real handover: a new provider session ID, compact checkpoint
+recovery, single ownership, retained workers and pending events, then both an
+event wake and a naturally triggered schedule reuse of that new Advisor.
 
 Classify readiness as `unverified`, `partial`, `verified` or `blocked` with the
 remaining boundary and reason. Only completed evidence through rearm/report and a

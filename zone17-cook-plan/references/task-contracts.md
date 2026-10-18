@@ -12,10 +12,8 @@ Persist only operational memory needed to resume:
 - Advisor session mode (default `reuse-automation`), automation-owned session
   identity, expected provider/model, handover receipts and current event-wake
   route. Preserve the Run ID across reuse or a verified replacement session.
-- Advisor rotation policy (`max_compactions_per_advisor_session: 10`), actual
-  provider session ID, verified compaction count or lower bound/unknown, evidence
-  source/cursor and last counted event. Persist outside the provider context.
-  Record pending rotation, checkpoint path, old/replacement session IDs, handover
+- Actual Advisor provider session ID, persisted outside the provider context.
+  Record pending handover, checkpoint path, old/replacement session IDs, handover
   stage, exclusive-owner receipts, wake-route verification and failure reason.
 - Confirmed role profiles as ordered comma-separated lists (primary first,
   then fallbacks), lead default mode and focus, free-text provider notes the

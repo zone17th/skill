@@ -6,7 +6,7 @@ Use session mode 2 by default: an existing-workspace Orca automation with
 `--reuse-session`. If the user creates the schedule from session A, its first
 run creates session B. After verified handover, B owns the Advisor role and
 later scheduled turns continue in B until it is unavailable or a verified
-threshold handover replaces it. A stops phase coordination after the transfer.
+handover replaces it. A stops phase coordination after the transfer.
 On an existing automation, reuse its actual
 prior available session instead of creating another bootstrap session.
 
@@ -29,29 +29,16 @@ A. If mode 2 is unsupported, report the limitation instead of silently choosing
 another mode. These session rules leave the 15-minute inactivity deadline and
 immediate completion handling unchanged.
 
-## Rotate after 10 compactions
+## Hand over to a replacement Advisor
 
-Default `max_compactions_per_advisor_session` is **10**. This counts actual
-context compactions in one provider conversation, not turns, schedule ticks,
-checkpoints or worker compactions. At `count >= 10`, mark rotation pending and
-handover at the next safe boundary before normal sleep. Finish an in-flight
-merge, acceptance write or dispatch transaction first; do not wait for all
-independent workers or the 15-minute timer. A delayed handover may exceed 10;
-keep the count and report the blocker rather than resetting it.
-Pending rotation does not revoke the current owner's authority; it continues
-necessary event handling until the exclusive handover succeeds.
+Hand over when the current Advisor is unavailable or the user asks for it. Do
+it at the next safe boundary: finish an in-flight merge, acceptance write or
+dispatch transaction first; do not wait for all independent workers or the
+15-minute timer. A pending handover does not revoke the current owner's
+authority; it continues necessary event handling until the exclusive handover
+succeeds. The skill does not count context compactions or rotate on them.
 
-Use a supported provider/runtime compaction counter or explicit compaction
-events tied to the actual session ID. Persist the count, source and event cursor
-in the durable manifest; deduplicate replayed events. Reloading, resuming or
-compacting that same session does not reset its count. If attaching mid-session,
-recover its earlier evidence; an incomplete event history is a lower bound,
-not proof of zero. A verified lower bound of 10 already justifies rotation.
-If the provider exposes no reliable evidence, record `unknown` and report that
-automatic rotation at this threshold is unverified. Do not substitute turn
-counts or claim the skill itself installs a compaction event listener.
-
-For each pending rotation:
+For each pending handover:
 
 1. Save a compact handover checkpoint: Run/DAG and revision, task/Dispatch owners,
    worktrees, acceptance evidence pointers, active decisions/blockers, pending
@@ -61,7 +48,7 @@ For each pending rotation:
 2. Prepare one fresh provider conversation using the confirmed Advisor profile
    and Orca's supported handover route. Keep workers, worktrees and the Run alive.
    Load the checkpoint and necessary rules only; a resume/fork carrying the old
-   transcript does not satisfy rotation. Record the proposed replacement ID and
+   transcript does not satisfy a handover. Record the proposed replacement ID and
    handover stage durably so recovery cannot create repeated replacements.
 3. Verify the replacement prompt started and it can read the checkpoint, then
    transfer exclusive Run authority with the supported release/bind protocol.
@@ -71,16 +58,15 @@ For each pending rotation:
 4. Update and verify both immediate event routing and the existing automation's
    reuse target. `--reuse-session` alone does not select an arbitrary new session.
    Discover the installed adapter's supported transfer mechanism; if unavailable,
-   report rotation blocked rather than starting a detached Advisor or changing
+   report the handover blocked rather than starting a detached Advisor or changing
    session mode silently. Retain one enabled phase schedule and the inactivity
    deadline based on real Advisor activity.
-5. Confirm a genuinely new provider session ID, initialize its compaction count
-   from its own evidence (zero only when no compaction has occurred), and record
-   the old session's final count and handover receipts. Drain pending events,
-   dispatch ready work and report progress before the new Advisor yields.
+5. Confirm a genuinely new provider session ID and record the handover
+   receipts. Drain pending events, dispatch ready work and report progress
+   before the new Advisor yields.
 
-Validate this handover in isolation before claiming automatic rotation works on
-a host/provider. If a transition fails, preserve the last proven authority and
+Validate this handover in isolation before claiming it works on a
+host/provider. If a transition fails, preserve the last proven authority and
 pending handover record, expose the blocker and recover through that protocol;
 do not reactivate both Advisors or restart healthy workers.
 
@@ -372,8 +358,7 @@ The report must contain these sections, even when a section says none:
   expected watchdog time in the user's timezone when verified. If uncertain,
   state the reason instead of promising a wake. Completion events still request
   immediate handling before that time.
-- Advisor compactions as `count/10` with verified or lower-bound evidence, or
-  `unknown`; pending/completed rotation and any handover blocker.
+- Pending/completed Advisor handover and any handover blocker, when one exists.
 
 Prefer a compact task inventory table with columns for task/feature, weight,
 owner/team, status/stage, evidence or dependency, and next action. Do not collapse

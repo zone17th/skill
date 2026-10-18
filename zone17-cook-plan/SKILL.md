@@ -16,9 +16,8 @@ description: >-
 Turn a plan into small, independently deliverable features. The main session
 where this skill is invoked is the initial Advisor. By default, the first
 automation session takes over that role through a verified handover; subsequent
-scheduled turns reuse that automation session (`--reuse-session`). Rotate to a
-fresh Advisor after 10 verified compactions at the next safe boundary, or recover
-in a replacement when unavailable, preserving the same Run/checkpoint and
+scheduled turns reuse that automation session (`--reuse-session`). Hand over to
+a replacement Advisor when it is unavailable or the user asks, preserving the same Run/checkpoint and
 exclusive ownership. Keep implementation moving in many small parallel
 teams; do not make the Advisor monitor terminal logs or approve each routine
 handoff.
@@ -331,9 +330,8 @@ required reporting route when configured; honor its completion permissions.
 Treat the user-facing report as a terminal condition of every actual Advisor
 pass, not optional narration. Before ending the turn, persist the checkpoint,
 final activity/rearm state and a stable `advisor_report_id` with
-`report_status: prepared`; then check the per-session compaction count. Follow
-[Advisor rotation](references/advisor-checkpoint.md#rotate-after-10-compactions)
-when the threshold is reached; report unknown counts or blocked handovers.
+`report_status: prepared`; report any pending or blocked
+[Advisor handover](references/advisor-checkpoint.md#hand-over-to-a-replacement-advisor).
 
 The non-empty final response must be the progress report and carry that report
 ID. It gives a complete phase view grouped as `done`, `in progress`, `not
