@@ -149,17 +149,6 @@ at once through an in-process subagent instead of dispatching a worker round:
   as recovered when any busy marker follows the error on screen. Spinners
   redraw character by character, so do not rely on one literal "Working"
   string. Log every nudge and skip, and honour the pause marker.
-- **Next account before the next profile.** A usage, weekly or rolling quota
-  limit is a proven failure of that account, not of the provider. When the
-  user has several accounts for the same provider (for example several
-  runtime-managed Codex accounts, each with its own home), move the lane to
-  the next account on the same worktree before using the fallback profile:
-  1. Fence the old Dispatch.
-  2. Hand-start the agent with that account's home.
-  3. Create a Task that carries the progress note.
-  4. Dispatch it with the preamble.
-  Do not flip the host-wide active account unless the user asks, because that
-  moves every new launch.
 - **Fallback on proven failure only.** A fallback needs positive evidence, such
   as quota or usage-limit exhaustion or a launcher that is not available.
   Record requested and effective profiles. Tell the user when two independent
@@ -194,11 +183,13 @@ at once through an in-process subagent instead of dispatching a worker round:
   - Put the exact runner command and rules into the phase team rules and every
     Tester brief. The G3-G4 `team-rules.md` section "Cloud test runner" is the
     template.
-  - Close each cloud round as soon as its report is recorded and no rerun on
-    that runner is queued: close the runner agent (UniWork:
-    `cloud-runner.mjs close`), release the cloud tester's Dispatch and close its
-    terminal. Do not keep a cloud VM or tester session warm for a later round;
-    the next round starts fresh.
+  - Cloud runner agents and cloud tester sessions may stay up while the lane
+    is open, but they must be closed when it closes: close the runner agents
+    from the lane worktree (UniWork: `cloud-runner.mjs close --all yes`), release
+    the cloud testers' Dispatches and close their terminals. These were being
+    left behind, so the lead lists what it closed in its DONE message, and the
+    Advisor checks every accepted or abandoned lane each pass (UniWork:
+    `cloud-runner.mjs status` from its worktree) and closes what is left.
 
 ## Standing cleanup (every pass, unprompted)
 
@@ -221,9 +212,9 @@ whenever a lane, stage or fix task settles, sweep without being asked:
   needs (an open PR, a lane pushed for the runner until the lane closes).
 - **Data.** Drop the per-lane and per-stage databases of removed worktrees
   (DROP can wait on checkpoints; run it in the background), remove per-stage
-  object-storage buckets, stop stacks and free their ports, close every remote
-  runner agent and cloud tester session whose round has reported (not only
-  those of finished lanes), and delete stale build/temp caches.
+  object-storage buckets, stop stacks and free their ports, close the remote
+  runner agents and cloud tester sessions of closed lanes (check, do not
+  assume: they were being left behind), and delete stale build/temp caches.
 - **Worktree count per lane.** Count worktrees per lane on every host. More than
   the Worktree budget in SKILL.md allows (lane head + one stage checkout + live
   parallel editors, max 5) means the lead is spawning per round: remove the
