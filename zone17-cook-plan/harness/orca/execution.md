@@ -104,7 +104,10 @@ runtime/bridge owns wake verification; the settled worker must end its turn.
    not submit a prompt to the recipient.
 3. An already-active recipient consumes pending mail at its next safe boundary;
    record that message's processing acknowledgement. Do not interrupt its work
-   or demand a second turn just to acknowledge delivery. For a dormant recipient,
+   or demand a second turn just to acknowledge delivery. Once the send succeeded
+   and the recipient acknowledged or acted on that message, the handoff is done:
+   do not also type the message or a pointer into its terminal. Direct prompt
+   input is only for a recipient that has not picked the mail up. For a dormant recipient,
    use the verified continuation/wake adapter and observe its actual turn start.
 4. Check the first wake promptly with a bounded observation, before treating the
    handoff as running. If still unproven, persist the pending handoff, inspect
@@ -204,6 +207,14 @@ consumer per Run. A send receipt proves enqueue, not a resumed Advisor turn;
 track wake/handling receipts separately as described in
 [Advisor events and recovery](../../references/advisor-checkpoint.md).
 
+Read every message body in full before acknowledging it; never ack from a
+truncated listing or a `cut`/`head` view. Decision requests often sit at the end
+of a long checkpoint. Acknowledge only the exact IDs that were read.
+
+A quiet inbox does not mean the lanes are moving. On every watchdog pass, compare
+each lead's last activity with its children's latest report times. A lead idle
+since a child reported has missed that `worker_done`; nudge it to drain its inbox.
+
 Process all rows in a delivered FIFO batch before acknowledging it. Match each
 completion with the current authoritative Task/Dispatch and revision. Choose
 reuse, explicit user-requested retention or release for every settled terminal,
@@ -236,6 +247,23 @@ and idle. Delivery of this event triggers the verified immediate Advisor wake
 through the receiving runtime/bridge; the settled worker does not poll or start
 another turn to arrange it. Its outcome means ready for Advisor review or
 recovery; integration and project completion still follow their own gates.
+
+## Orca pitfalls
+
+- **`ask` needs `reply`.** A blocking `ask` unblocks only through
+  `orchestration reply --id <message_id>`; a plain `send` back does not.
+- **Mail after settle.** A send without a dispatch ID, or sent after the
+  worker's `worker_done`, can land in the sender's own child Run. Lead-to-Advisor
+  mail then goes `--to run:<Advisor run id>`.
+- **Inherited terminal handle.** A new agent terminal can inherit another
+  terminal's `ORCA_TERMINAL_HANDLE` and act as that terminal (and hijack its
+  child Run). Echo the env after launch and always pass `--from` explicitly.
+- **No `--interrupt` on codex.** It kills the codex session. Redirect a codex
+  worker with a plain message instead.
+- **Quoting `--body`.** In a double-quoted body the shell runs backtick spans as
+  commands. Use single quotes, or put the body in a file and pass its path.
+- **PowerShell eats `@name`.** An unquoted `@role` argument is splatted away.
+  Quote it or use a form without a leading `@` (omp: `pi/<role>`).
 
 ## Fallback and recovery
 

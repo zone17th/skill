@@ -45,10 +45,26 @@ drive letters, tracker names) in the run's team rules, not here.
    runner, close it from the worktree first (UniWork: `cloud-runner.mjs close`
    deletes the agent and its results refs) and delete the pushed lane branch.
    Record what was cleaned.
-8. **Tracker status.** Move an issue only along the tracker's documented flow.
+8. **Small findings.** See [Small findings](#small-findings).
+9. **Tracker status.** Move an issue only along the tracker's documented flow.
    For example, do not set a review status before a PR exists. When one issue
    spans several slices, comment per accepted slice and leave the status until
    the whole issue is done.
+
+## Small findings
+
+A finding is small when its fix needs no new test or review round: a one-line
+mapping, copy or token fix, a missing guard with an obvious test, a small test
+gap. The lead (for its lane) or the Advisor (on the integration branch) fixes it
+at once through an in-process subagent instead of dispatching a worker round:
+
+- The subagent edits only where no other edit owner is live: the lead's own
+  checkout between stages, or the integration branch right after a merge.
+- One commit per fix, with its test when behaviour changes.
+- The lead or Advisor reads the subagent's diff and reruns the affected checks
+  itself; that replaces the Tester and Reviewer round for this fix only.
+- Anything larger, or a fix that touches another lane's paths, goes back
+  through the normal loop.
 
 ## Visual testing
 
@@ -178,6 +194,11 @@ drive letters, tracker names) in the run's team rules, not here.
   - Put the exact runner command and rules into the phase team rules and every
     Tester brief. The G3-G4 `team-rules.md` section "Cloud test runner" is the
     template.
+  - Close each cloud round as soon as its report is recorded and no rerun on
+    that runner is queued: close the runner agent (UniWork:
+    `cloud-runner.mjs close`), release the cloud tester's Dispatch and close its
+    terminal. Do not keep a cloud VM or tester session warm for a later round;
+    the next round starts fresh.
 
 ## Standing cleanup (every pass, unprompted)
 
@@ -200,8 +221,9 @@ whenever a lane, stage or fix task settles, sweep without being asked:
   needs (an open PR, a lane pushed for the runner until the lane closes).
 - **Data.** Drop the per-lane and per-stage databases of removed worktrees
   (DROP can wait on checkpoints; run it in the background), remove per-stage
-  object-storage buckets, stop stacks and free their ports, close remote
-  runner agents of finished lanes, and delete stale build/temp caches.
+  object-storage buckets, stop stacks and free their ports, close every remote
+  runner agent and cloud tester session whose round has reported (not only
+  those of finished lanes), and delete stale build/temp caches.
 - **Worktree count per lane.** Count worktrees per lane on every host. More than
   the Worktree budget in SKILL.md allows (lane head + one stage checkout + live
   parallel editors, max 5) means the lead is spawning per round: remove the

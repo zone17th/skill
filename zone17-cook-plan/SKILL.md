@@ -226,6 +226,9 @@ Repeat the inner test/fix loop until evidence is sufficient, and the outer
 review/fix loop until blocking findings are resolved. Review fixes always return
 through relevant testing. Preserve passing evidence for unchanged code; invalidate
 evidence and reviews that no longer cover the submitted revision or environment.
+A small finding whose fix needs no new test or review round is fixed at once by
+the lead or Advisor through an in-process subagent, not by another lane round; see
+[small findings](references/advisor-operations.md#small-findings).
 
 Each feature has one Lead in the mode its contract names. It runs a child
 run to dispatch Worker, Tester and Reviewer profiles and process their replies.
@@ -347,6 +350,12 @@ parent's weight constant when splitting it among children. Never invent a
 percentage from elapsed time, message counts or subjective confidence; report
 an unknown percentage and the missing basis until the ledger is established.
 Report scope/denominator changes explicitly.
+
+The percentage stays on the plan's scope. Work outside the plan (user bugs,
+extra requests) does not enter its denominator; it is reported beside it as
+accepted/total counts. Only when the user asks to update the plan does that work
+join the plan scope and the percentage get recomputed. Show counts with the
+percentage, for example `plan 86.6% (71/82) · outside plan 32/65`.
 
 Report even when no progress changed; do not imply that yielding completes the
 phase. Checkpoint writes, tracker comments, schedule rearm, lease release and
