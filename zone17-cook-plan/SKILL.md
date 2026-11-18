@@ -97,7 +97,7 @@ allows. A reviewer is a separate agent instance from that feature's author.
 | Role | Responsibility | Selection |
 | --- | --- | --- |
 | Advisor | Initial decomposition, immediate completion handling and next-task dispatch, unresolved decisions, acceptance, integration, recovery and temporary handling of roles whose list is exhausted | Initial main session, then reused automation session after handover; preserve confirmed provider/model |
-| Lead | Owns one feature lane: its child Run, stage and worker dispatch, merging its workers' commits, the acceptance packet. Mode `coordinator` or `working`, see [Lead modes](#lead-modes) | Ask; also ask the default mode and optional focus |
+| Lead | Owns exactly ONE plan task, which is its lane (see [One lead per plan task](#one-lead-per-plan-task)): its child Run, stage and worker dispatch, merging its workers' commits, the acceptance packet; closes after the Advisor settles that task. Mode `coordinator` or `working`, see [Lead modes](#lead-modes) | Ask; also ask the default mode and optional focus |
 | BE Worker | Backend implementation and fix tasks given by a lead or the Advisor | Ask |
 | FE Worker | Frontend implementation and fix tasks given by a lead or the Advisor | Ask |
 | BE Reviewer | Identify concrete backend bugs, regressions, risks and missing verification, by the [review method](references/review-method.md) | Ask |
@@ -167,10 +167,37 @@ do not restart the task or permit two simultaneous edit owners. Follow
 fallback and recovery in the harness's execution guide (Orca:
 [fallback and recovery](harness/orca/execution.md#fallback-and-recovery)).
 
+### One lead per plan task
+
+User rule (2026-11-05): a lead leads exactly the one plan task it is assigned.
+It is not a long-lived owner of a PBI or of a group of tasks.
+
+- **Unit.** One lead per plan task (for example `P6-T11`, or `UNI-2468`), or per
+  follow-up ticket the Advisor files. Several tiny tasks of the plan may share a
+  lead only when the plan itself groups them into one task.
+- **Lifetime.** The lead starts when the Advisor dispatches the task. It runs
+  the worker → tester ∥ reviewer → fix-round loop and sends the acceptance
+  packet. It closes once the Advisor accepts the task or reassigns it. Closing
+  means: stage sessions released, task worktrees removed, branch kept, final
+  STATUS line written.
+- **No reuse.** A finished lead never takes another task. The next task gets a
+  fresh lead with a small context. Decisions that must carry over go into the
+  next lead's contract, not into its memory.
+- **Integration is a task too.** Merging accepted tasks into a phase or verify
+  branch, an E2E run, or a rerun campaign each gets its own lead under the same
+  rule.
+- **Concurrency.** Run as many task leads at once as the ready wave, editing
+  conflicts and host resources allow (see [Divide for parallel progress](#divide-for-parallel-progress)).
+  Queue the rest in the Advisor's ready list and start one as soon as a slot
+  frees. Place leads on whichever host has capacity.
+- **Advisor bookkeeping.** Keep one row per live lead: task, lead terminal,
+  host, branch/base SHA, stage, and channel (Orca mail, or an inbox file for a
+  remote host). Sweep closed leads on every pass.
+
 ## Divide for parallel progress
 
 The Advisor chooses the unit of delivery: one plan task or one small feature
-inside it. Each unit must have a bounded scope, output and observable acceptance.
+inside it. Each unit has its own lead ([One lead per plan task](#one-lead-per-plan-task)). Each unit must have a bounded scope, output and observable acceptance.
 Split independent units aggressively and launch the whole ready wave before
 waiting. Limit concurrency only for real dependencies, editing conflicts,
 environment isolation, provider limits or available resources.
@@ -187,7 +214,8 @@ every `--worktree new-*` or new session, name the reason in the contract
 (parallel editor, different repo/host, a lane head); "a new stage round" is never
 a reason.
 
-- A lane owns its head worktree (the lead's). Workers edit there by default.
+- A lane is one plan task. It owns its head worktree (the lead's), and workers
+  edit there by default. The worktree is removed when the task's lead closes.
 - Testers, cloud testers, visual testers and reviewers edit nothing. They run in
   the lead's checkout while editing pauses, or in ONE standing read-only stage
   checkout per lane that each round re-points (`git checkout --detach <sha>`).
@@ -230,7 +258,7 @@ A small finding whose fix needs no new test or review round is fixed at once by
 the lead or Advisor through an in-process subagent, not by another lane round; see
 [small findings](references/advisor-operations.md#small-findings).
 
-Each feature has one Lead in the mode its contract names. It runs a child
+Each plan task has one Lead in the mode its contract names. It runs a child
 run to dispatch Worker, Tester and Reviewer profiles and process their replies.
 This is a routing duty, not a new decision-making role. It cannot accept its own
 feature, broaden scope, merge the phase branch, or bypass project completion
