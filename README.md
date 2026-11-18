@@ -5,6 +5,46 @@ with a `SKILL.md` entrypoint and supporting references.
 
 ## Available skills
 
+### [zone17-builder](zone17-builder/SKILL.md)
+
+Take a piece of work from request to final pull request in two phases, with a
+human gate before each step that commits the team to something. It works in any
+project: commands, rules, tracking and risk areas are read from the current
+project into a profile for each run.
+
+- **Phase 1, documents.** The current session writes a spec, then an
+  implementation plan. An independent reviewer on a model you choose reviews
+  each with bundled lenses and bounded rounds; unclear points come back to you
+  as questions with a recommendation; you approve the spec, then the plan.
+- **Plans are built to be executed and tested.** One pipeline table (hard and
+  soft dependencies, waves, weights, risk), and per task the impact outside the
+  task with a check for each affected thing, and a test plan covering every
+  acceptance criterion. `scripts/plan-lint.mjs` checks this mechanically.
+- **Phase 2, cook.** The `zone17-cook-plan` workflow, plus QC on every task
+  (planned tests ran, regression scope, tests shown failing before the change,
+  reviewed test changes, test counts against the base, rules for unstable
+  tests), a gate on the integration branch after each wave, and a final QA
+  task with a QA report.
+- **It stops at the final pull request.** Merging it, deploying and releasing
+  are separate requests.
+- **Existing documents** can be adopted instead of rewritten
+  ([adopt](zone17-builder/references/adopt.md)).
+- **It improves with use.** The Advisor keeps notes on the process during a
+  run, sorts them at the end and proposes changes; approved ones land here with
+  a [changelog](zone17-builder/CHANGELOG.md) entry
+  ([how](zone17-builder/references/improvement.md)).
+
+The review lenses under `zone17-builder/references/lenses/` include files
+copied from [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD) under
+its MIT licence (notice in `LICENSE-BMAD.txt` there), so neither the project nor
+the host needs BMAD installed. `zone17-builder` carries its own copy of the cook
+workflow and does not need `zone17-cook-plan` installed; the two can be
+installed side by side.
+
+Invoke it as `zone17-builder [spec | plan | cook | status] [harness=<name>]`.
+It needs Node.js for the plan lint, and for the cook phase the same tools as
+`zone17-cook-plan` below.
+
 ### [zone17-cook-plan](zone17-cook-plan/SKILL.md)
 
 Execute a phased implementation plan with parallel teams in isolated
@@ -71,10 +111,11 @@ With the Skills CLI, select the agents that should receive the skill:
 
 ```sh
 npx skills add zone17th/skill --skill zone17-cook-plan --global
+npx skills add zone17th/skill --skill zone17-builder --global
 ```
 
-For a manual installation, clone this repository and copy `zone17-cook-plan/`
-into `~/.agents/skills/`. Providers that do not discover that shared directory
+For a manual installation, clone this repository and copy the skill's folder
+(`zone17-cook-plan/`, `zone17-builder/`) into `~/.agents/skills/`. Providers that do not discover that shared directory
 need a link or copy in their own supported global skills directory. Restart or
 reload the provider session if needed. `agents/openai.yaml` is optional Codex
 interface metadata; the skill instructions do not depend on it.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Zone17 Builder"
+  short_description: "Spec, plan and cook to the final PR, with review and QA gates"
+  default_prompt: "Use $zone17-builder to take this request from spec to plan to the final pull request: ask me what is unclear, ask which model reviews the documents, wait for my approval at each gate, and cook the plan with parallel teams only when I say so."
