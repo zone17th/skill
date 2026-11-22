@@ -24,6 +24,10 @@ Checks mechanically
     increase in skipped vs base_executed / base_skipped has count_delta_reason
   - when is_bug_fix is true or red_first_required is non-empty, red_first_proofs
     prove behavioral failure (exit_code !== 0, not a compile/import error) on base_sha
+  - when mode === "refactor" (or pin_first_required / must_delete / loc_delta are set):
+    - pin_first_proofs prove characterization tests PASS (exit_code === 0) on base_sha
+    - must_delete entries confirm 0 remaining_refs (and deleted files no longer exist)
+    - loc_delta rejects net production LOC growth unless loc_increase_reason is given
 
 Options
   --json          emit JSON output
@@ -185,6 +189,59 @@ for (const p of proofs) {
 }
 const missingRed = redRequired.filter((id) => !provenRed.has(id));
 if (missingRed.length) err("red_first", `missing red_first_proofs for: ${missingRed.join(", ")}`);
+
+// 7. Refactor-mode gates: pin_first_proofs, must_delete (0 legacy refs), and anti-bloat loc_delta
+const isRefactor = packet.mode === "refactor";
+const pinRequired = Array.isArray(packet.pin_first_required) ? [...packet.pin_first_required] : [];
+const pinProofs = Array.isArray(packet.pin_first_proofs) ? packet.pin_first_proofs : [];
+const provenPins = new Set();
+for (const p of pinProofs) {
+  const id = `pin_first:${p?.id ?? "pin"}`;
+  if (p?.id) provenPins.add(p.id);
+  if (!nonEmpty(p?.command)) err(id, "missing pinning test command");
+  if (p?.exit_code !== 0) {
+    err(id, `exit_code is ${p?.exit_code}; characterization/pinning test must PASS (exit_code === 0) on base_sha before structural edits`);
+  }
+  if (isSha(packet.base_sha) && p?.base_sha !== packet.base_sha) {
+    err(id, `pin base_sha "${p?.base_sha ?? ""}" does not match packet base_sha "${packet.base_sha}"`);
+  }
+  checkLogFile(id, p?.log_path, true);
+}
+const missingPins = pinRequired.filter((id) => !provenPins.has(id));
+if (missingPins.length) err("pin_first", `missing pin_first_proofs on base_sha for: ${missingPins.join(", ")}`);
+
+const mustDelete = Array.isArray(packet.must_delete) ? packet.must_delete : [];
+if (isRefactor && mustDelete.length === 0 && !nonEmpty(packet.no_delete_reason)) {
+  warn("must_delete", 'mode is "refactor" with empty must_delete[]; list legacy symbols/files removed or set no_delete_reason');
+}
+for (const d of mustDelete) {
+  const label = `must_delete:${d?.target ?? "item"}`;
+  if (!nonEmpty(d?.target)) { err(label, "missing target name/path"); continue; }
+  if (typeof d?.remaining_refs !== "number" || d.remaining_refs !== 0) {
+    err(label, `remaining_refs is ${d?.remaining_refs ?? "missing"}, expected 0 (legacy references still exist)`);
+  }
+  if (!nonEmpty(d?.search_command)) {
+    err(label, "missing search_command proving 0 remaining references on tested_sha");
+  }
+  if (d?.kind === "file" && nonEmpty(d?.repo_root) && !skipLogs) {
+    const candidate = path.resolve(d.repo_root, d.target);
+    if (fs.existsSync(candidate)) {
+      err(label, `file scheduled for deletion still exists on disk: ${candidate}`);
+    }
+  }
+}
+
+if (isRefactor) {
+  const loc = packet.loc_delta;
+  if (!loc || typeof loc.prod_added !== "number" || typeof loc.prod_deleted !== "number") {
+    err("loc_delta", 'mode is "refactor", so loc_delta: { prod_added, prod_deleted } is required');
+  } else if (loc.prod_added > loc.prod_deleted && !nonEmpty(loc.loc_increase_reason)) {
+    err(
+      "loc_delta",
+      `refactor task increased production LOC (+${loc.prod_added} / -${loc.prod_deleted}) without loc_increase_reason; anti-slop refactors should shrink or hold code size`
+    );
+  }
+}
 
 // Output
 const failed = errors.length > 0 || (strict && warnings.length > 0);

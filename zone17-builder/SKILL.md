@@ -1,20 +1,20 @@
 ---
 name: zone17-builder
 description: >-
-  Take work from request to final pull request in two gated phases. Phase 1,
-  documents: run empirical spikes when needed, write a spec, then an
-  implementation plan with domain shapes, a task pipeline, per-task external
-  impact and a full test plan; an independent reviewer (or multi-model panel)
-  reviews both with bundled lenses, unclear business points go to the human in
-  batches, and the human approves each gate. Phase 2, cook: the Orchestrator
+  Take work from request to final pull request in two gated phases — for new
+  features, bug fixes, or codebase anti-slop refactoring (`zone17-builder
+  refactor`). Phase 1, documents: audit/spike when needed, write a spec (or
+  Refactor Spec), then an implementation plan with domain shapes, a task
+  pipeline, per-task external impact and a full test plan; an independent
+  reviewer (or multi-model panel) reviews both, unclear points go to the human
+  in batches, and the human approves each gate. Phase 2, cook: the Orchestrator
   executes waves of parallel lane teams (each lane led by a coordinate-only
   Advisor or a hands-on Lead, with strict worker engineering principles,
-  2-strike fresh-worker recovery, execution-proven review, mechanical evidence
-  and worktree audits, wave gates and final QA), ending at the final pull
-  request. Use whenever the user wants to build a feature or batch end to end,
-  write or review a spec or plan, or cook an approved plan ("zone17-builder",
-  "lên spec", "lên plan", "cook plan"). Project-neutral. Loading this skill
-  alone does not start a team or a schedule.
+  2-strike fresh-worker recovery, execution-proven review, mechanical evidence,
+  LOC/deletion and worktree audits, wave gates and final QA), ending at the
+  final pull request. Use for "zone17-builder", "lên spec", "lên plan", "cook
+  plan", "refactor dự án", "dọn slop". Project-neutral. Loading this skill alone
+  does not start a team or a schedule.
 ---
 
 # Zone17 Builder
@@ -54,13 +54,19 @@ from another project.
 
 ## Invocation
 
-`zone17-builder [spec | plan | cook | status | setup] [harness=<name>]`
+`zone17-builder [spec | plan | cook | refactor | status | setup] [scope=<paths>] [harness=<name>]`
 
 - No phase word: resume from `builder-state.json` when present; otherwise start
-  at `spec`.
+  at `spec` (or `refactor` when the user asks to clean up, deduplicate, deslop
+  or restructure existing code without changing behavior).
 - `spec`, `plan`, `cook`: enter that phase. Entering `plan` without G1 or `cook`
   without G2 is allowed only when the user supplies an existing document; bring
   it up to standard first via [adopt.md](references/adopt.md).
+- `refactor`: enter the **Anti-Slop & Architecture Refactor** workflow
+  ([refactor.md](references/refactor.md), `assets/refactor-spec-template.md`) —
+  runs static detectors + a 6-category slop audit first, enforces `pin-first`
+  characterization tests, zero leftover legacy references (`must_delete`), and
+  anti-bloat `loc_delta` checks across Phase 1 and Phase 2.
 - `status`: read-only report of gates, open questions, review rounds and, during
   cook, the Orchestrator progress report. Change nothing.
 - `setup`: create or update the user's saved default model roster at
@@ -73,9 +79,10 @@ from another project.
 
 | When | Read |
 | --- | --- |
-| Always first, before writing or cooking | [project-profile.md](references/project-profile.md) |
-| Writing or updating a spec | [spec.md](references/spec.md), `assets/spec-template.md` |
-| Writing or updating a plan | [plan.md](references/plan.md), `assets/plan-template.md` |
+| Always first, before writing, auditing or cooking | [project-profile.md](references/project-profile.md) |
+| Writing or updating a feature/change spec | [spec.md](references/spec.md), `assets/spec-template.md` |
+| Auditing AI slop / dead code or refactoring existing code | [refactor.md](references/refactor.md), `assets/refactor-spec-template.md` |
+| Writing or updating a plan | [plan.md](references/plan.md), `assets/plan-template.md` (plus [refactor.md](references/refactor.md#phase-1b-cutting-the-refactor-plan) in refactor mode) |
 | Adopting an existing spec or plan | [adopt.md](references/adopt.md) |
 | Before sending a spec or plan to review | [doc-review.md](references/doc-review.md) |
 | Configuring or updating saved role models | [cook.md](references/cook.md#team-roster) |
@@ -133,6 +140,12 @@ start cooking (G3). Ask when ambiguous.
   - **Tester / Tester cloud / Tester visual / Bridge lead**: independent test
     execution, remote runner driving, deterministic visual diffs, and remote
     host relay ([cook.md](references/cook.md#team-roster)).
+- **In-process subagents (both phases):** human locks the allowed pool via 4
+  tiers in `zone17-roster.json` (`fast` [`Luna`/`Haiku`/`Hydrogen`] →
+  `standard` [`Terra`/`Sonnet`/`Argon`] → `deep` [`Sol`/`Opus`/`Neon`] →
+  `professor` [`Astra`/`Fable`/`Carbon`]), and the parent agent routes each
+  subagent to the tier matching the job; `professor` never fans out subagents on
+  `professor` ([Subagent model tiers](references/cook.md#subagent-model-tiers-fast--standard--deep--professor)).
 
 ## Asking the human (and settling empirical forks yourself)
 

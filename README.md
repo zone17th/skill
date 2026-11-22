@@ -5,10 +5,12 @@ Reusable engineering skills for multi-agent coding workflows across providers
 
 ## Available skills
 
-### [zone17-builder](zone17-builder/SKILL.md) *(Primary — v0.2.0)*
+### [zone17-builder](zone17-builder/SKILL.md) *(Primary — v0.3.0)*
 
 End-to-end engineering workflow from request to final pull request in two gated
-phases, project-neutral across stacks and trackers:
+phases — supporting **new features, bug fixes, and codebase anti-slop
+refactoring (`zone17-builder refactor`)**, project-neutral across stacks and
+trackers:
 
 - **Phase 1 · Documents (`Author` → `Document Reviewer` / Panel → Human Gates G1 & G2):**
   - Runs quick empirical spikes/prototypes before freezing specs or plans when

@@ -95,25 +95,60 @@ To avoid repeating model questions every run, store defaults in
     "orchestrator": "claude claude-opus-5-5 high",
     "advisor": "claude claude-sonnet-5-5 high",
     "lead": "claude claude-opus-5-5 xhigh",
-    "worker_be": "codex gpt-6-astra high, claude claude-sonnet-5-5 high",
+    "worker_be": "codex gpt-6.2-sol xhigh, claude claude-sonnet-5-5 high",
     "worker_fe": "claude claude-sonnet-5-5 high",
-    "reviewer_be": "codex gpt-6-astra high",
-    "reviewer_fe": "claude claude-sonnet-5-5 high",
+    "reviewer_be": "codex gpt-6.2-sol xhigh",
+    "reviewer_fe": "claude claude-opus-5-5 medium",
     "tester": "claude claude-sonnet-5-5 medium",
-    "doc_reviewer": "codex gpt-6-astra high"
+    "doc_reviewer": "codex gpt-6.2-sol xhigh"
   },
-  "high_risk_panel": ["claude claude-opus-5-5 high", "codex gpt-6-astra high"]
+  "subagent_tiers": {
+    "fast": "codex gpt-6-luna high, claude claude-haiku-5-5 high, google gemini-4-hydrogen high",
+    "standard": "claude claude-sonnet-5-5 high, codex gpt-6.1-terra high, google gemini-4-argon high",
+    "deep": "claude claude-opus-5-5 xhigh, codex gpt-6.2-sol xhigh, google gemini-4-neon xhigh",
+    "professor": "claude claude-fable-5-2 high, codex gpt-6-astra high, google gemini-4-carbon high"
+  },
+  "high_risk_panel": ["claude claude-opus-5-5 high", "codex gpt-6.2-sol xhigh"]
 }
 ```
 
 - **When `~/.agents/zone17-roster.json` exists:** display the active table in a
   compact block at G1/G3 and ask once whether to proceed with the preset or
   override specific roles for this run.
-- **When absent (or on `zone17-builder setup`):** ask for required roles once in
-  the user's language, offer to save `~/.agents/zone17-roster.json` as the
-  default preset, and record the confirmed roster in `run-manifest.json`.
+- **When absent (or on `zone17-builder setup`):** ask for required roles and
+  allowed `subagent_tiers` once in the user's language, offer to save
+  `~/.agents/zone17-roster.json` as the default preset, and record the confirmed
+  roster in `run-manifest.json`.
 - Provider runtime notes stated mid-run (quotas, peak windows, host caps) are
   appended verbatim to the run's team rules, never asked up front.
+
+### Subagent model tiers (`fast` → `standard` → `deep` → `professor`)
+
+The human defines the allowed model pool in `subagent_tiers` (preventing agents
+from calling unauthorized or unsubscribed models), and the parent agent
+**automatically matches each in-process subagent to the tier its task needs** —
+never defaulting blindly to `inherit` when the parent runs on an expensive model:
+
+| Tier | Reference families (OpenAI / Anthropic / Google) | When the parent agent selects it |
+| --- | --- | --- |
+| **`fast`** | `Luna` / `Haiku` / `Hydrogen` | High-fanout read-only work: codebase recon, searching `Impact outside the task`, Phase 1a 6-category slop audits, summarizing large logs |
+| **`standard`** | `Terra` / `Sonnet` / `Argon` | Individual review lenses inside a `Reviewer`, mechanical edits, `small findings` fixes, routine test scaffolding |
+| **`deep`** | `Sol` / `Opus` / `Neon` | Complex `Domain shape` design, subtle multi-file implementation, `2-strike fresh worker` rotation, reviewer triage synthesis |
+| **`professor`** | `Astra` / `Fable` / `Carbon` | **Apex tier — strict guardrail:** reserved *only* for (1) explicit user request, (2) a single seat on a `high` risk / G1–G2 review panel, or (3) a strike-3 architectural deadlock after two `deep` attempts failed (state which reason triggered it) |
+
+**Precedence & Guardrails (Human intent always wins):**
+1. **Precedence order:** (a) **Explicit human instruction in chat/contract**
+   always overrides everything (including forcing or banning any model/tier);
+   (b) **`subagent_tiers` in `zone17-roster.json`** when the human customized
+   it; (c) **Default 4-tier mapping table above** when the human left
+   `subagent_tiers` unspecified — restricted strictly to the providers/accounts
+   the human already confirmed in `roles` (never calling an unconfirmed
+   provider).
+2. **Never fan out on `professor` (or `deep` for read-only work) unless the
+   human explicitly ordered it.** A session running on `professor` (`Astra` /
+   `Fable` / `Carbon`) **must never spawn subagents on `professor` on its own**
+   — run review lenses inline in the session or pin lens/helper subagents down
+   to `standard` / `fast`.
 
 ### Choosing `Advisor` vs `Lead` per lane
 

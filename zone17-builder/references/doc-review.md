@@ -54,7 +54,11 @@ never commits, pushes or mutates trackers.
 | `prose` | `lens-prose.md` | Final round (after `structure`) | Final round (after `structure`) | Clarity and concision (`word_metrics.py`) |
 
 Run independent lenses in parallel subagents when supported, passing each lens
-only the document and contract (never another lens's output).
+only the document and contract (never another lens's output). **Subagent tier
+rule:** pin lens subagents to the `standard` tier (`Sonnet` / `Terra` / `Argon`
+from `subagent_tiers`), never inheriting a `professor`-tier (`Fable` / `Astra` /
+`Carbon`) or `deep`-tier model; if the runtime cannot pin a cheaper model for
+subagents, a `professor` reviewer runs the lenses inline in its own session.
 
 ## Triage & grading
 

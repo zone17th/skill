@@ -44,7 +44,11 @@ must **ground findings in reality**:
 
 Run lenses in parallel in-process subagents when available (each seeing only the
 diff file and contract intent, returning raw findings without spawning nested
-skills), or sequentially in one session otherwise.
+skills), or sequentially in one session otherwise. **Subagent tier rule:** pin
+lens subagents to the `standard` tier (`Sonnet` / `Terra` / `Argon` from
+`subagent_tiers` in `cook.md`). A Reviewer running on `professor` (`Fable` /
+`Astra` / `Carbon`) **must never spawn `professor` subagents** — either pin lens
+subagents to `standard` or run the lenses inline in the Reviewer session.
 
 ### Built-in `fe-quality` & `code-craft` passes
 

@@ -5,6 +5,37 @@ where the reason came from (a run, a user decision, or an engineering audit). A
 run records the version it started with and keeps it until it ends; see
 [Improving this skill](references/improvement.md).
 
+## 0.3.0 · 2026-11-22
+
+Added dedicated **Anti-Slop & Architecture Refactor mode (`zone17-builder refactor`)**
+for cleaning up codebases built across earlier multi-agent runs:
+
+- **`references/refactor.md` & `assets/refactor-spec-template.md`:** two-phase
+  100% behavior-preserving workflow starting with deterministic static detectors
+  (`tsc`, `knip`, unused/lint checks) + parallel read-only audit subagents across
+  6 AI-slop categories (dead code, cross-lane duplication, defensive guards &
+  pass-through wrappers, domain-shape boolean soup, comment/debug slop, and
+  brittle/unpinned tests). Separates discovered functional bugs out of refactor
+  lanes so behavior never drifts silently.
+- **Safe wave sequencing:** Wave 1 pins behavior (`pin-first` characterization
+  tests passing on `base_sha`) and performs pure dead-code/comment subtraction
+  before Wave 2..N unifies duplicates, reshapes types, migrates callers and
+  deletes legacy paths in the same wave.
+- **Mechanical refactor gates in `scripts/verify-evidence.mjs`:** validates
+  `pin_first_proofs` (`exit_code === 0` on `base_sha`), `must_delete` (`0`
+  remaining references + deleted files gone), and `loc_delta` (blocks refactor
+  tasks that quietly increase production LOC without `loc_increase_reason`).
+- **4-level subagent model routing (`fast` | `standard` | `deep` | `professor`):**
+  human locks the allowed pool in `zone17-roster.json` across the 4 frontier
+  tiers (`Luna/Terra/Sol/Astra`, `Haiku/Sonnet/Opus/Fable`,
+  `Hydrogen/Argon/Neon/Carbon`), and parent agents route subagents by task
+  difficulty (`fast` for recon/slop scans, `standard` for lenses/small fixes,
+  `deep` for complex code/2-strike resets, and strict `professor` guardrails so
+  `Astra`/`Fable`/`Carbon` never fan out `professor` subagents).
+
+Origin: user need to audit and refactor AI slop / duplication on projects built
+under earlier workflows (e.g. Thi 360), 2026-11-22.
+
 ## 0.2.0 · 2026-11-22
 
 Major architecture, role, review, and mechanical-verification upgrade inspired
