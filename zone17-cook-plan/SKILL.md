@@ -1,17 +1,21 @@
 ---
 name: zone17-cook-plan
 description: >-
-  Execute a phased implementation plan with parallel worktree teams on a
-  selectable harness (`zone17-cook-plan:<harness>`, default Orca),
-  user-selected providers and models, autonomous worker/test/review loops,
-  Jev typed decisions, immediate Advisor handling of worker completion, and
-  a 15-minute recovery watchdog for interrupted workflows.
-  Use for the zone17 cook-plan workflow and supervised multi-provider plan
-  execution with evidence-based acceptance and requirements discovered from
-  the current project. Authoring this skill alone does not start a team or a schedule.
+  [Legacy v1 — superseded by zone17-builder] Execute an already-running v1
+  cook-plan workflow. For all new runs (from idea to spec/plan/cook, or cooking
+  an existing plan via `zone17-builder cook`), prefer `zone17-builder`. Kept
+  intact so active v1 runs do not drift mid-run.
 ---
 
-# Zone17 Cook Plan
+# Zone17 Cook Plan *(Legacy v1 — prefer `zone17-builder` for new runs)*
+
+> **Note:** `zone17-cook-plan` is the first-generation cook workflow. All new
+> projects and phases — including cooking an existing implementation plan —
+> should use **`zone17-builder`** (`zone17-builder cook`), which upgrades role
+> hierarchy (`Orchestrator` → lane `Advisor` / `Lead`), worker engineering
+> principles, 2-strike fresh-worker rotation, execution-proven review, and
+> mechanical verification scripts. Use this skill only to finish an already
+> active v1 run.
 
 Turn a plan into small, independently deliverable features. The main session
 where this skill is invoked is the initial Advisor. By default, the first

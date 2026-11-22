@@ -16,8 +16,6 @@ const COLUMNS = {
   risk: ["risk", "risk tier", "rủi ro", "mức rủi ro"],
   status: ["status", "state", "trạng thái"],
 };
-// A task whose Status is one of these is already merged: its dependencies,
-// wave and weight are still checked, its section fields are not.
 const DONE = ["done", "merged", "accepted", "xong", "đã xong", "đã merge", "hoàn thành"];
 
 const FIELDS = {
@@ -29,6 +27,8 @@ const FIELDS = {
   tests: ["test plan", "tests", "kiểm thử", "kế hoạch kiểm thử"],
 };
 const OPTIONAL_FIELDS = {
+  owner: ["lane owner", "lane role", "chủ lane", "vai trò lane"],
+  shape: ["domain shape", "data shape", "domain / data shape", "cấu trúc dữ liệu", "mô hình miền"],
   out: ["out of scope", "ngoài phạm vi"],
   design: ["design / references", "design", "references", "thiết kế", "tham chiếu"],
 };
@@ -37,6 +37,7 @@ const RISK = {
   standard: ["standard", "normal", "thường", "bình thường", "chuẩn"],
   high: ["high", "cao"],
 };
+const LANE_OWNERS = ["advisor", "lead"];
 const TOTAL_LABELS = ["total weight", "tổng trọng số", "tổng điểm"];
 const GATE_HEADERS = ["gate", "gate id", "cổng", "cổng chặn"];
 const NONE_WORDS = ["none", "no impact", "không có", "không"];
@@ -54,6 +55,8 @@ Checks
   - weights are positive and add up to the declared "Total weight: N", when declared
   - every task in the table has a section whose heading starts with its ID
   - every section has the required fields, none of them empty
+  - non-QA tasks declare a Domain shape (warning when omitted; error with --strict)
+  - optional Lane owner field starts with "advisor" or "lead"
   - every AC-n under Acceptance appears in the Test plan
   - every impact row names a check ("→ check"), or "none" explains what was searched
   - one closing task in the last wave depends on every other task (warning)
@@ -96,7 +99,7 @@ if (files.length !== 1) { console.error(help()); process.exit(2); }
 
 if (labelsFile) {
   try {
-    const extra = JSON.parse(fs.readFileSync(labelsFile, "utf8"));
+    const extra = JSON.parse(fs.readFileSync(labelsFile, "utf8").replace(/^\uFEFF/, ""));
     for (const [k, v] of Object.entries(extra.columns ?? {})) if (COLUMNS[k]) COLUMNS[k].push(...v.map(norm));
     for (const [k, v] of Object.entries(extra.fields ?? {})) {
       if (FIELDS[k]) FIELDS[k].push(...v.map(norm));
@@ -106,7 +109,7 @@ if (labelsFile) {
 }
 
 let text;
-try { text = fs.readFileSync(files[0], "utf8"); }
+try { text = fs.readFileSync(files[0], "utf8").replace(/^\uFEFF/, ""); }
 catch (e) { console.error(`plan-lint: cannot read ${files[0]}: ${e.message}`); process.exit(2); }
 
 // ------------------------------------------------------------------ helpers
@@ -140,7 +143,6 @@ const warnings = [];
 const err = (where, msg) => errors.push({ where, msg });
 const warn = (where, msg) => warnings.push({ where, msg });
 
-// Mark lines inside fenced code blocks so headings and tables there are ignored.
 const fenced = new Array(lines.length).fill(false);
 {
   let open = null;
@@ -203,9 +205,6 @@ if (!table) {
 }
 
 // -------------------------------------------------------------------- gates
-// A task may wait on a gate (a design, an access, a decision) instead of a
-// task. Gates are the first-column IDs of any table whose first header is
-// "Gate". They are valid dependencies and do not affect wave numbers.
 const gates = new Set();
 for (let i = 0; i < lines.length - 1; i++) {
   if (fenced[i] || !isRow(lines[i]) || !isSeparator(lines[i + 1])) continue;
@@ -228,7 +227,6 @@ for (const t of tasks.values()) {
   if (both.length) warn(t.id, `listed as both hard and soft dependency: ${both.join(", ")}`);
 }
 
-// Cycles over hard dependencies.
 let cyclic = false;
 {
   const state = new Map();
@@ -248,9 +246,9 @@ let cyclic = false;
   for (const id of tasks.keys()) visit(id);
 }
 
-// Waves, critical path, closure.
 let criticalPath = [];
 const waveSizes = {};
+const closingIds = new Set();
 if (!cyclic) {
   for (const t of tasks.values()) {
     if (t.wave === null) continue;
@@ -284,7 +282,6 @@ if (!cyclic) {
   }
   criticalPath = top.path;
 
-  // A closing task: in the last wave, reaching every other task through hard deps.
   if (tasks.size > 1) {
     const lastWave = Math.max(0, ...[...tasks.values()].map((t) => t.wave ?? 0));
     const reach = (id, seen = new Set()) => {
@@ -292,6 +289,7 @@ if (!cyclic) {
       return seen;
     };
     const closing = [...tasks.values()].filter((t) => t.wave === lastWave && reach(t.id).size === tasks.size - 1);
+    closing.forEach((c) => closingIds.add(c.id));
     if (closing.length === 0) warn("pipeline", "no closing task in the last wave depends on every other task; a plan ends with one QA task");
   }
 }
@@ -351,6 +349,20 @@ for (const t of tasks.values()) {
     else if (!textOf(k) || placeholder(textOf(k))) err(t.id, `field "${FIELDS[k][0]}" is empty`);
   }
 
+  // Domain shape check on non-QA tasks.
+  const isQaTask = closingIds.has(t.id) || /^(qa|final[-_ ]?qa)\b/i.test(t.id);
+  if (!isQaTask && (!textOf("shape") || placeholder(textOf("shape")))) {
+    warn(t.id, 'missing "Domain shape" field; state core types, state machine or boundary signature before coding');
+  }
+
+  // Optional Lane owner validation ("advisor" or "lead").
+  if (textOf("owner") && !placeholder(textOf("owner"))) {
+    const ownerWord = norm(textOf("owner")).split(/[\s,;:(\-]/)[0];
+    if (ownerWord && !EMPTY_CELL.has(ownerWord) && !LANE_OWNERS.includes(ownerWord)) {
+      err(t.id, `Lane owner "${textOf("owner").split("\n")[0]}" must start with "advisor" (coordinate-only) or "lead" (hands-on + coordinate)`);
+    }
+  }
+
   // Acceptance criteria and their tests.
   const acIn = (s) => [...new Set((s.match(/\bAC-\d+[a-z]?\b/g) ?? []))];
   if (textOf("acceptance")) {
@@ -393,7 +405,6 @@ for (const t of tasks.values()) {
     }
   }
 
-  // High-risk tasks must say which tests are red-first.
   if (t.risk === "high" && textOf("tests") && !/red[- ]first|đỏ trước/i.test(textOf("tests"))) {
     warn(t.id, "high-risk task without a red-first mark in its Test plan");
   }

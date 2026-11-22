@@ -1,222 +1,187 @@
-# Task and message contracts
+# Task, manifest and evidence contracts
 
-## Run manifest
+## Run manifest (`run-manifest.json`)
 
-Persist only operational memory needed to resume:
+Persist compact operational state in the run folder (outside disposable
+worktrees; single writer or atomic write; zero credentials):
 
-- Run ID, plan/version, phase, integration branch/base SHA, workspace root.
-- Harness name (`orca` when the invocation had no suffix); fixed for the run.
-- Initial Advisor session, current Advisor session/host and verified Orca
-  coordinator address; applicable host/project rule paths and any project-required
-  tracking/reporting route. Populate project-specific fields only when applicable.
-- Advisor session mode (default `reuse-automation`), automation-owned session
-  identity, expected provider/model, handover receipts and current event-wake
-  route. Preserve the Run ID across reuse or a verified replacement session.
-- Actual Advisor provider session ID, persisted outside the provider context.
-  Record pending handover, checkpoint path, old/replacement session IDs, handover
-  stage, exclusive-owner receipts, wake-route verification and failure reason.
-- Confirmed role profiles as ordered comma-separated lists (primary first,
-  then fallbacks), lead default mode and focus, free-text provider notes the
-  user added during the run, capacity and effective launches. An exhausted
-  list defaults the role to the Advisor.
-  Record temporary ownership, primary unavailability evidence and handback
-  readiness/checkpoint so recovery preserves current work.
-- Jev policy/question version, decision-record location, cache freshness policy,
-  fallback owner and last reported decision IDs/usage cursor. Aggregate actual
-  requests separately from typed questions, cache hits and relayed records.
-- Feature ID -> Orca parent Task/active Dispatch -> child Run IDs, plus any
-  project-required issue reference.
-- Versioned phase progress ledger: every scoped task/feature, its parent, stable
-  weight, status (`done`, `in-progress`, `not-started`, or `blocked`), owner,
-  dependency/blocker and acceptance evidence. Record `total_weight`,
-  `advisor_accepted_weight`, weight totals for all four status buckets, computed
-  completion percentage, weighting basis and scope version. The bucket weights
-  must sum to `total_weight`. If no estimates exist, use equal weights and label
-  that basis.
-  Splitting a task allocates its existing weight among children rather than
-  increasing the denominator. Only Advisor acceptance moves weight into the
-  numerator; stage activity remains visible without inflating completion.
-- Exact worktree selectors, absolute paths, branch SHAs and ownership.
-- Contract/report/evidence paths, gates, pending decisions and acknowledged
-  message/request IDs. Use the project's configured source of truth; if no
-  external tracker is required, the Run/Task manifest is sufficient.
-- Per-team durable resume checkpoint, last actual progress, current stage and
-  revision, pending handoff, and current child Run/Dispatch ownership. Preserve
-  unfinished edits and artifact paths so recovery does not restart from scratch.
-- Per-action handoff receipt: stable message ID, actual recipient and live
-  attempt/process identity, transport, enqueue receipt, submission request ID
-  if provided, observed input/turn-start evidence, processing acknowledgement,
-  verification owner and next recovery action. Preserve unknown observations
-  as unknown; these are manifest fields, not invented Orca response fields.
-- One schedule ID; last Advisor activity, next due time, generation,
-  active/pending wake state, and whether the phase is running or paused. Separate
-  completion-event IDs from watchdog generations, and record the last recovery
-  sweep so frequent events cannot hide another team's interruption indefinitely.
-- Schedule verification state (`unverified`, `partial`, `verified`, `blocked`),
-  actual threshold/host/provider, scheduled trigger receipts, correlated turn
-  start, successful Run binding, recovery-pass result and rearm evidence. Store
-  pending launch claims separately from authoritative Advisor ownership. A
-  failed launch/binding must not overwrite the last valid owner's yield proof.
-- Per-pass Advisor report ledger: stable `advisor_report_id`, pass/Run generation,
-  `report_status` (`prepared`, `observed`, or `recovery-needed`), prepared time,
-  compact content reference/digest, final-response transcript/output receipt,
-  observation time and resend count. Set `prepared` after final checkpoint/rearm
-  and before the final response. Checkpoint, tracker, lease and schedule receipts
-  never mark a report observed. Reconcile a pending entry on the next wake and
-  resend the prepared report at most once when the matching final response is
-  absent; deduplicate by report ID.
+- `run_id`, `skill_version`, `plan_path`, `plan_version`, `spec_path`,
+  `harness` (default `orca`), `integration_branch`, `base_sha`, `workspace_root`.
+- **Orchestrator authority:** `initial_session`, `current_orchestrator_session`,
+  `automation_id`, `run_generation`, `session_mode` (default
+  `reuse-automation`), `lease`, `handover_state`, and verified wake route.
+- **Confirmed roster:** role fallback chains (`orchestrator`, `advisor`, `lead`,
+  `worker_be`, `worker_fe`, `reviewer_be`, `reviewer_fe`, `tester`, optional
+  `tester_cloud`, `tester_visual`, `bridge`, `high_risk_panel`),
+  `default_lane_owner` (`advisor` | `lead`), `default_lead_focus`, mid-run
+  provider notes, per-host concurrency caps, and temporary fallback ownership.
+- **Progress ledger** (validated by `scripts/audit-lanes.mjs`):
+  - `scope_version`, `weighting_basis` (`estimated` | `equal`), `total_weight`,
+    `orchestrator_accepted_weight`, bucket weight sums (`done`, `in_progress`,
+    `not_started`, `blocked` — must equal `total_weight`), and computed
+    `phase_completion_percent`.
+  - Per-task row: `task_id`, `parent_id`, `weight`, `status`,
+    `lane_owner_role` (`advisor` | `lead`), `lane_handle`, `host`, `branch`,
+    `worktrees` (selectors + paths), `stage`, `FixStrikeCount`, and
+    `evidence_packet_path`.
+  - `outside_plan`: `{ accepted: <n>, total: <n> }` tracked beside plan scope.
+- **Delivery & watchdog state:** unacknowledged `message_ids`, pending handoff
+  receipts (`enqueued`, `input_accepted`, `turn_started`, `handled`),
+  `schedule_id`, `schedule_verification` (`unverified` | `partial` | `verified`
+  | `blocked`), `last_orchestrator_active_at`, `next_due_at`, and `paused` flag.
 
-Choose a shared, authorized durable location. Do not create a second global
-tracking board or write run-specific settings into this installed skill.
-Use one writer per record or an atomic compare-and-swap/lock when shared.
+## Lane task contract
 
-## Feature contract
+Give every lane `Advisor` or `Lead` a self-contained contract with concrete,
+host-accessible paths:
 
 ```yaml
-feature_id: <stable local identifier>
-plan_task: <plan reference and phase>
-issue: <project-required issue reference or null>
-parent_issue: <project-required parent reference or null>
-target: <component and explicit owned paths>
+feature_id: <stable task ID, e.g. T3>
+plan_task: <plan section heading and wave>
+issue: <tracker ID or null>
+lane_owner_role: advisor | lead # advisor = coordinate-only; lead = implements focus + coordinates
+lead_focus: <optional slice for lead role, e.g. "core domain & BE"; null for advisor>
+worker_principles: <absolute path to references/worker-principles.md on execution host>
+domain_shape: <core types, state machine, union or boundary signature from the plan>
+target: <module and explicit owned_paths; everything else is read-only>
 result: <concrete user-visible or technical behavior>
-out_of_scope: <boundaries>
+out_of_scope: <explicit exclusions>
 constraints: <compatibility, security and repository invariants>
 acceptance:
   - id: AC-1
     behavior: <observable condition>
     evidence_required: <command, assertion or browser scenario>
-risk_tier: <standard | high, copied from the plan task; high adds the QC proofs in qa-qc.md>
-test_plan: <the plan task's test plan: per acceptance ID the test, its level and the command>
-regression_scope: <the plan task's impact rows: what else is affected, where, and the check that proves it still works>
-red_first: <acceptance IDs and bug fixes whose new tests must be shown failing on the pre-change code; [] if none>
-dependencies: <real prerequisites and contract versions>
-integration_branch: <resolved branch>
-base_sha: <verified commit>
-worktree: <exact Orca selector and absolute path>
-worktree_reason: <why a new checkout was needed, or "reuse lead/stage checkout" (cook.md Worktree budget)>
-edit_owner: <lead Dispatch; workers own the paths it assigns them>
-lead_mode: <coordinator | working; default from the roster>
-lead_focus: <optional free text for working mode, e.g. "hard tasks first", "FE tasks"; null = task that blocks the most work>
-worker_profiles: <BE, FE or both, as roster lists>
-tester_profile: <confirmed Tester list>
-cloud_tester_profile: <Tester cloud list, or null = Tester drives the runner; null too when the project has no runner>
-visual_tester_profile: <Tester visual list, or null = Tester runs visual stages too>
-visual_stages: <acceptance IDs/stages that need a real browser, desktop window, screenshot or visual diff; [] if none>
-reviewer_profiles: <BE, FE or both as applicable>
-review_method: <absolute path to references/review-method.md on the execution host; review_round full | delta per stage>
-rules: <absolute rule and skill paths available on execution host>
-environment: <isolated ports/database/browser targets; no secrets>
-report_destination: <durable path outside disposable worktree>
-decision_route: <actual parent Run/Advisor address>
-completion_route: <verified immediate Advisor wake/relay and source event IDs>
-handoff_route: <verified submission/wake adapter and delivery verification owner>
-tracking_route: <project-required reporting route or null>
-fallback_policy: <next entry in the role's list; list exhausted -> Advisor until an entry is ready>
-jev_policy: <default triggers, decision-record location and freshness policy>
+risk_tier: standard | high
+test_plan: <per AC-n: test name, level, exact command>
+regression_scope:
+  - id: IMP-1
+    target: <affected outside path/symbol>
+    command: <exact regression command>
+red_first: <list of AC-n IDs (or ["BUG"]) requiring failing proof on base_sha; [] if none>
+visual_stages: <AC-n IDs needing browser/screenshot/pixel-diff verification; [] if none>
+dependencies: <merged hard deps and soft-dep readiness rules>
+integration_branch: <branch>
+base_sha: <verified commit SHA>
+worktree: <exact harness worktree selector and path>
+worktree_reason: lane head # max 5 worktrees/lane: lane head + 1 stage checkout + parallel editors
+worker_profiles: <BE, FE or both fallback lists>
+tester_profile: <Tester fallback list>
+cloud_tester_profile: <Tester cloud list or null>
+visual_tester_profile: <Tester visual list or null>
+reviewer_profiles: <BE/FE lists; include high_risk_panel when risk_tier == high>
+review_method: <absolute path to references/review-method.md on execution host>
+verify_script: <absolute path to scripts/verify-evidence.mjs on execution host>
+rules: <absolute paths to project-profile.md and repo rule files>
+environment: <isolated DB name, ports, base URL; zero secrets>
+evidence_packet_path: <durable JSON path outside disposable worktrees>
+orchestrator_route: <parent Run / Orchestrator wake address>
+fallback_policy: <next profile in role list; exhausted -> Orchestrator>
 ```
 
-Before dispatch, replace the bracketed values with real facts. If frontend and
-backend both change, cover both with independent reviews. A feature has one
-lead and edit owner at a time; split or sequence other editors explicitly.
+**Mandatory kickoff header** for every `Advisor`, `Lead`, `BE Worker` and
+`FE Worker` prompt:
 
-## Stage outcomes and evidence
+```text
+Read <worker_principles> before reading or writing code.
+```
 
-An Orca Task is one dispatchable unit, not necessarily the entire plan feature.
-Use distinct stage Tasks for test, review and follow-up verification. A valid
-stage `worker_done` settles that stage; it does not settle feature acceptance.
+## Evidence packet schema (`<task>-evidence.json`)
 
-A tester/reviewer can successfully complete an investigation that finds a bug.
-Its report must separate `stage_outcome` (report produced or execution failed)
-from `test_verdict` (`pass`, `fail`, `blocked`, `not_run`) or `review_verdict`
-(`clear`, `changes_required`, `blocked`). Reviewers derive the verdict and
-finding fields as the [review method](review-method.md#report) maps them. If that stage's contract explicitly
-requires passing tests, failed tests mean a failed stage. Always route from
-the actual verdict; never infer product correctness from lifecycle success.
+Before emitting lane `worker_done`, the lane `Advisor` or `Lead` writes this
+JSON packet to `evidence_packet_path` and validates it with
+`node <skill-root>/scripts/verify-evidence.mjs <evidence_packet_path>` (exit `0`
+required):
 
-Record, as applicable:
+```json
+{
+  "feature_id": "T3",
+  "risk_tier": "high",
+  "is_bug_fix": false,
+  "base_sha": "<40-char-or-short-sha>",
+  "tested_sha": "<sha>",
+  "reviewed_sha": "<sha>",
+  "review_verdict": "clear",
+  "open_blocking_findings": 0,
+  "uncovered_delta_kind": "none",
+  "uncovered_delta_note": "",
+  "required_acs": ["AC-1", "AC-2"],
+  "criteria": [
+    {
+      "id": "AC-1",
+      "test": "rejects duplicate submission",
+      "command": "npm test -- submit.spec.ts",
+      "exit_code": 0,
+      "sha": "<tested_sha>",
+      "log_path": "/durable/run-folder/logs/T3-ac1.log"
+    }
+  ],
+  "regression_scope": [
+    {
+      "id": "IMP-1",
+      "target": "src/billing/summary.ts",
+      "command": "npm test -- summary.spec.ts",
+      "exit_code": 0,
+      "sha": "<tested_sha>",
+      "log_path": "/durable/run-folder/logs/T3-imp1.log"
+    }
+  ],
+  "suites": [
+    {
+      "name": "unit",
+      "executed": 42,
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "base_executed": 40,
+      "base_skipped": 0,
+      "count_delta_reason": ""
+    }
+  ],
+  "red_first_required": ["AC-1"],
+  "red_first_proofs": [
+    {
+      "id": "AC-1",
+      "base_sha": "<base_sha>",
+      "tested_sha": "<tested_sha>",
+      "command": "npm test -- submit.spec.ts",
+      "exit_code": 1,
+      "failure_summary": "Expected 409 Conflict, received 200 OK",
+      "log_path": "/durable/run-folder/logs/T3-ac1-red.log"
+    }
+  ],
+  "cleaned_resources": {
+    "sub_worktrees_removed": [],
+    "databases_dropped": ["test_t3_stage"],
+    "cloud_runners_closed": []
+  }
+}
+```
 
-- Task/Dispatch IDs, issue, role, timestamp, tested/reviewed commit SHA and
-  any dirty-tree diff identity. Prefer a committed immutable handoff.
-- Exact command and working directory, environment/base URL, exit status,
-  relevant output, artifact paths, failing assertions and reproduction steps.
-- Browser page ID, route, viewport, actions, expected and actual observations,
-  screenshots and relevant console/network evidence with private data removed.
-- Per-criterion evidence links; skipped/unavailable checks with reasons.
-- Per suite: executed, passed, failed and skipped counts, and the same counts
-  on the base revision; every new skip or drop in executed tests with its reason.
-- Red-first proofs and regression-scope results, as
-  [QA and QC](qa-qc.md#qc-per-task) defines them.
-- Jev decision references and judged/cached/skipped/unavailable/invalid status,
-  unresolved semantic questions and the responsible fallback owner. These
-  judgments supplement execution evidence and independent review.
-- Findings with stable ID, file/line, trigger, impact, severity, proposed fix
-  owner and verification requirement. Explicitly state when no findings exist.
-- Unresolved risks and the next eligible stage. A requested command is not a
-  command that ran, and a passing exit code is not sufficient if the command's
-  own documented behavior permits unmet checks.
+Always separate `stage_outcome` (did the stage finish writing a report?) from
+`test_verdict` (`pass` | `fail` | `blocked`) and `review_verdict` (`clear` |
+`changes_required` | `blocked`). Never infer passing code from lifecycle
+completion alone.
 
-## Orca message body
+## Structured harness messages
 
-Use structured bodies within real Orca `send`/`ask`/`reply` calls; these fields
-do not define new CLI flags:
+Within Orca `send` / `ask` / `reply` bodies:
 
 ```yaml
-kind: checkpoint_request | checkpoint | handoff | feedback | decision_required | completion_notice
-message_id: <stable producer-generated id for replay/deduplication>
-feature_id: <feature>
-issue: <project-required issue reference or null>
+kind: handoff | feedback | decision_required | completion_notice | checkpoint
+message_id: <stable producer ID for deduplication>
+feature_id: <task ID>
 run_id: <owning Run>
-task_id: <stage Task>
-dispatch_id: <authoritative attempt>
-revision: <SHA and environment identity>
-observed_state: <what is proven now>
-evidence: <bounded summary and accessible artifact paths>
-feedback_ids: <references; preserve original findings>
-jev_decisions: <decision references, pending judgments or omission reasons>
-next_owner: <eligible profile or Advisor>
-blocking_decision: <question, options, tradeoffs and recommendation if needed>
+task_id: <stage or lane Task>
+dispatch_id: <authoritative Dispatch>
+revision: <commit SHA>
+observed_state: <concise proven facts>
+evidence_packet: <durable path when applicable>
+feedback_ids: <finding IDs R<round>-<n>>
+fix_strike: <0 | 1 | 2 | 3>
+next_owner: <role or orchestrator>
+blocking_decision: <question, options, costs and recommendation when escalating>
 ```
 
-For `completion_notice`, include the original `worker_done` message ID, source
-Run/Task/Dispatch, outcome, report path and whether this is a stage completion
-or a feature ready for acceptance. Forward it immediately to Advisor through
-the verified route. It is a notification of the original event, not another
-`worker_done` or permission to settle a child Task twice. A failed outcome is
-also an immediate notification. Do not wait for tracker acknowledgement or the
-watchdog before requesting Advisor attention.
-
-Read messages at natural checkpoints and immediately before `worker_done`.
-Acknowledge only after processing every delivered row and recording ownership
-decisions. Preserve the producer message ID for deduplication; it is not a CLI
-retry token. Use only the transport's documented retry method and actual
-runtime-issued request ID where required. A successful enqueue is not proof
-of receipt or action. Track execution/handling as described in
-the selected harness's execution guide (Orca: [execution](../harness/orca/execution.md)); do not report a handoff running from typed
-but unsubmitted text. Stale revisions do not overwrite current outcomes.
-
-## Feedback handling
-
-Attach feedback to its feature and revision. Exact IDs and exact duplicates
-are deterministic. Apply the default [Jev policy](jev-decisions.md) to semantic
-matching, likely duplicates among bounded candidates and finding coverage by
-fix evidence. Record the outcome or concrete omission reason. Preserve both
-reports and their provenance; link possible duplicates rather than deleting
-them. One fix can resolve several findings only when its verification covers
-each trigger.
-
-Workers own fixes. Reviewers report findings and verify resolution. Tester owns
-independent execution evidence. A disputed finding includes the author's
-reasoning and the reviewer's counterexample in a decision packet to Advisor.
-
-## Checkpoint response
-
-Persist a checkpoint at stage handoffs and natural work boundaries, including
-after tests and before yielding or a risky operation. Do not wait for the
-watchdog to request the first checkpoint: a terminated agent cannot reply.
-
-Each feature lead aggregates its team's checkpoint: current stage/revision,
-completed evidence, active members, blockers, remaining work and available
-capacity. Include new Jev decision references, actual request/question counts,
-cache reuse, omission/failure reasons and escalations; do not recount a relayed
-decision as a new call. Reply through Orca without stopping healthy tests.
-Missing replies remain unknown; they do not justify launching a duplicate worker.
+Workers own fixes (under the 2-strike fresh-worker rule); Testers own execution
+evidence; Reviewers own code verification. Disputed findings escalate to the
+`Orchestrator` with the author's reasoning and the reviewer's repro/counterexample.

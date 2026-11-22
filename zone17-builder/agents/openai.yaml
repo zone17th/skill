@@ -1,4 +1,4 @@
 interface:
   display_name: "Zone17 Builder"
-  short_description: "Spec, plan and cook to the final PR, with review and QA gates"
-  default_prompt: "Use $zone17-builder to take this request from spec to plan to the final pull request: ask me what is unclear, ask which model reviews the documents, wait for my approval at each gate, and cook the plan with parallel teams only when I say so."
+  short_description: "End-to-end spec, plan and Orchestrator cook workflow to final PR"
+  default_prompt: "Use $zone17-builder to take this work from spec to plan to the final pull request: run quick spikes where code can settle doubts, batch business questions for me, confirm or reuse my roster preset, wait for my approval at each gate, and run the Orchestrator cook loop with Advisor/Lead lanes only when I say start."

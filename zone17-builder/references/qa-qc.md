@@ -1,197 +1,125 @@
 # QA and QC
 
-What phase 2 adds to the cook loop so that "tests passed" means the work is
-right, and so that tasks that pass alone also work together. QC is checking
-each task's output; QA is checking the whole as it comes together. Both run for
-every task and every run, whatever models fill the roles.
+Phase 2 quality gates ensuring that "tests passed" means the behavior actually
+works on the real artifact, and that independently built tasks work together.
+QC checks every individual task; QA checks the integrated whole.
 
 Contents: [QC per task](#qc-per-task) · [Wave gate](#wave-gate) ·
 [Final QA task](#final-qa-task) · [Final pull request](#final-pull-request) ·
 [Follow-ups and lessons](#follow-ups-and-lessons)
 
-## QC per task
+## QC per task (enforced mechanically by `verify-evidence.mjs`)
 
-The lead puts these into the task contract from the plan (`test_plan`,
-`regression_scope`, `risk_tier`, `red_first`) and into every Tester and
-Reviewer brief. The Advisor checks them at acceptance; a missing one means the
-task is not accepted yet and goes back to the same lead.
+The lane `Advisor` or `Lead` embeds `test_plan`, `regression_scope`, `risk_tier`
+and `red_first` into Tester/Reviewer briefs, assembles `<task>-evidence.json`,
+and runs:
 
-### 1. The plan's tests exist and ran
+```bash
+node <skill-root>/scripts/verify-evidence.mjs <task>-evidence.json
+```
 
-Every acceptance criterion's planned test exists, is named so it can be found,
-and ran on the submitted revision. The acceptance packet carries a table: one
-row per criterion with the test, the command, the exit code, the log and the
-SHA. A criterion with an empty cell was never verified.
+Both the lane owner (before `worker_done`) and the `Orchestrator` (before
+acceptance) require exit code `0`.
 
-When a planned test turns out to be the wrong one, the lead says so and
-proposes the replacement; it does not quietly drop it.
+### 1. Planned tests exist and ran on `tested_sha`
+Every `AC-n` has its named test, exact command, `exit_code: 0`, matching
+`tested_sha`, and a readable non-empty `log_path`. If a planned test turned out
+wrong-leveled, the lane owner documents the replacement explicitly rather than
+dropping the criterion.
 
-### 2. Regression scope
+### 2. Regression scope (`impact outside the task`)
+`Tester` executes every check in `regression_scope` on `tested_sha`. Any new
+external impact discovered mid-task is added to the packet and reported to the
+`Orchestrator` to record in the plan.
 
-The Tester runs every check in the task's impact rows, not only the task's own
-tests. This is the part that catches a change breaking something outside the
-files it edited. An impact found during the work that the plan missed is added
-to the scope and reported to the Advisor, who adds it to the plan's row.
+### 3. Red-first proof (bug fixes & `high` risk criteria)
+A test that never fails proves nothing. On the lane's detached read-only stage
+checkout (never mutating the lane branch):
+1. Restore production paths to `base_sha` (`git checkout <base_sha> -- <prod-paths>`)
+   while keeping the new test.
+2. Run the test: it must fail (`exit_code != 0`) for the behavioral reason
+   described by the criterion — **compile/import/syntax errors do not count**
+   (`verify-evidence.mjs` flags compile-error signatures).
+3. Save the raw failing log, record both SHAs in `red_first_proofs`, and reset
+   the stage checkout clean.
 
-### 3. Red-first proof
+### 4. Post-review test & fixture delta audit
+Any commit touching tests or fixtures after `reviewed_sha` requires a Reviewer
+delta pass checking for weakened assertions, added skips, widened tolerances, or
+mocks replacing real code (`uncovered_delta_kind: "docs"` is the only delta
+allowed without re-review).
 
-A test that cannot fail proves nothing. For every bug fix, and for the
-criteria a `high` risk task marks `red_first`, the Tester shows that the new
-test fails without the change:
-
-1. In the lane's read-only stage checkout (never on the lane branch), restore
-   the production files to their state before the change while keeping the new
-   test. `git checkout <base_sha> -- <production paths>` on a detached checkout
-   does this; when files are too entangled, revert the fix commit there instead.
-2. Run the new test. It must fail, and for the reason the criterion describes,
-   not because it no longer compiles.
-3. Record the command, the failing output and both SHAs, then discard the
-   checkout's changes.
-
-A test that still passes without the change goes back to the worker as a
-finding: it asserts nothing about the behaviour.
-
-### 4. Test changes are reviewed
-
-Any commit that changes tests or fixtures after the last review gets a delta
-review aimed at weakened verification: removed or loosened assertions, new
-skips, wider tolerances, mocks replacing the path under test, expected values
-edited to match the output. Editing a test until it passes is the cheapest way
-to make a failure disappear, so it is never waved through with a note. Only
-documentation-only deltas can pass with a recorded note.
-
-### 5. Counts against the base
-
-A green exit code can hide tests that stopped running. Per suite, the Tester
-reports executed, passed, failed and skipped counts for the tested revision and
-for the base revision. Fewer executed tests, or any new skip, needs a reason in
-the report. Disabling, skipping or deleting a test to get a pass is a blocking
-finding unless the plan says the behaviour it tested was removed.
+### 5. Suite counts against `base_sha`
+Per suite, record `executed`, `passed`, `failed`, `skipped` alongside
+`base_executed` and `base_skipped`. Any drop in `executed` or increase in
+`skipped` fails `verify-evidence.mjs` unless `count_delta_reason` justifies why
+those tests retired.
 
 ### 6. Unstable tests
+Never pre-label failures as "known flaky" in Tester briefs:
+- `Tester` must rerun a suspected flake alone $\ge 3$ times and point to a
+  concrete mechanism (shared state, clock/timer, ordering, port contention).
+- In `high` risk areas, intermittent failures are treated as real concurrency
+  bugs, never quarantined away.
+- Only the `Orchestrator` may quarantine an unstable test, recording an owner
+  and tracker ticket in the unstable-test ledger and Final QA report.
 
-A failing test is a failure until someone shows otherwise. Tester briefs do not
-pre-label any failure as known or unrelated.
-
-- To call a failure unstable, the Tester reruns the test alone at least three
-  times, records the results, and states a cause it can point to (timing, load,
-  shared state, order). "Passed on rerun" alone is not a diagnosis.
-- Each unstable test gets an entry in the run's unstable-test ledger with its
-  owner and a follow-up, and the project's tracker item when the project uses
-  one. The Advisor decides whether it blocks.
-- Tests of a high-risk area are never set aside as unstable: an intermittent
-  failure there is investigated as a possible real race.
-- A test may be quarantined only by the Advisor, with a recorded reason, and it
-  is listed in the QA report.
-
-### 7. Evidence that counts
-
-As in [Advisor operations](advisor-operations.md#acceptance): each check has its
-command, exit code, raw log and tested SHA; a test that skipped for a missing
-service is not evidence; the Advisor reruns the affected checks on the merge
-result itself.
+### 7. Orchestrator merge rerun
+After `verify-evidence.mjs` passes, the `Orchestrator` merges into the
+integration branch and reruns affected checks + repo contract suites on the
+merged SHA itself, inspecting verbose output to reject silent DB/service `SKIP`s.
 
 ## Wave gate
 
-Tasks are tested alone in their lanes. The wave gate tests them together, early
-enough that a conflict is cheap to fix.
+When the last task of a wave merges into the integration branch (and daily on
+long waves), the `Orchestrator` verifies on the integration head:
 
-When the last task of a wave is merged into the integration branch, and at
-least once a day on long waves, the Advisor runs on the integration head:
+1. Full non-visual project checks (via remote test runner when configured);
+2. End-to-end suite (when configured);
+3. Cross-task `regression_scope` rows where caller and callee belonged to
+   different tasks;
+4. Host/worktree hygiene via `scripts/audit-lanes.mjs`.
 
-1. the project's full non-visual checks (through the remote runner when the
-   project has one);
-2. the end-to-end suite, when the project has one;
-3. the cross-task regression checks: impact rows whose owner or affected thing
-   belongs to a different task than the one that changed it.
-
-Record the result in the run folder with command, exit code, log and SHA.
-
-- A failure gets an owner the same day: the task whose change caused it, or a
-  new follow-up task when the cause spans tasks. Tasks that depend on the
-  broken area are not accepted until it is fixed; unrelated tasks keep going.
-- The next wave's tasks may start before the gate finishes. The gate limits
-  what can be accepted, not what can begin, so that lanes do not idle.
-- Treat this as integration work: it gets its own lead when it needs fixing
-  ([One lead per plan task](cook.md#one-lead-per-plan-task)).
+Next-wave lanes may **start** before the wave gate finishes so workers do not
+idle, but tasks depending on a broken wave-gate area are **not accepted** until
+a dedicated integration lane (`Advisor` or `Lead`) fixes the regression.
 
 ## Final QA task
 
-The plan's last task. It has its own lead and its own contract, and it checks
-the whole run against the spec on the integration branch. It finds problems; it
-does not build features. Small fixes follow the
-[small findings](advisor-operations.md#small-findings) rule, larger ones become
-fix tasks.
+The plan's closing task runs in its own lane (`Advisor` or `Lead`) against the
+final integration SHA — verifying, never adding features:
 
-1. **Spec walk.** For every acceptance criterion of the spec: the task that
-   implemented it, the test that proves it, and its result on the final
-   integration SHA. Any criterion without evidence is a defect, even if every
-   task was accepted.
-2. **Full run.** All checks of the project profile on the final integration
-   SHA: static checks, all test levels, end-to-end, build, and the plan's
-   performance checks. Counts against the run's base revision.
-3. **Whole-run regression.** Every impact row of every task once more, on the
-   final SHA.
-4. **Flows across tasks.** The end-to-end scenarios the spec implies that no
-   single task owns, including the failure paths.
-5. **Visual sweep**, when the work has screens: the project's required
-   viewports, themes and languages, by the
-   [visual testing](advisor-operations.md#visual-testing) rules.
-6. **Documents match the code.** The spec, the plan and the project documents
-   the profile names say what was built; deviations decided during the run are
-   written back with their decision IDs.
-7. **Ledgers closed.** Every follow-up, deferred finding, unstable test and
-   quarantined test has one of: fixed, a tracker item with an owner, or a
-   recorded decision not to do it. Nothing is left as a bare note.
-8. **QA report** from `assets/qa-report-template.md`, in the run folder and
-   wherever the project keeps such reports.
+1. **Spec walk:** verify every spec `AC-n` has passing evidence on the final
+   integration SHA.
+2. **Full suite & build:** static checks, unit/integration/contract/E2E, build,
+   and planned performance checks (with `benchmark-checklist` rigor: explain the
+   limiter and compare against baseline counts).
+3. **Whole-run regression & cross-task user flows** (including failure paths).
+4. **Visual sweep** across required viewports, themes and languages when UI
+   changed.
+5. **Doc sync & closed ledgers:** spec/plan reflect approved `D-n` deviations;
+   every deferred finding, follow-up and unstable test has a fix, tracker item,
+   or recorded human decision; `verify-evidence.mjs` and `audit-lanes.mjs` both
+   exit `0`.
+6. **QA report** written from `assets/qa-report-template.md`.
 
-The Advisor accepts the QA task like any other: by reading the evidence and
-rerunning the checks on the final SHA.
+The `Orchestrator` accepts Final QA by checking the packet and rerunning key
+integration gates on the final SHA.
 
-## Final pull request
+## Final pull request (Gate G4)
 
-The run's last act. Open the pull request from the integration branch to the
-plan's target branch when the project profile and the plan's authorization
-allow the agent to open it; otherwise report it ready and stop. Its body gives a
-reviewer who was not in the run what they need:
+Open the PR from the integration branch to the target branch (or report ready if
+human-only PR opening applies). Keep the PR body scannable ($\le 50$ lines, link
+to the full QA report for tables/logs):
+- Why & what was built (mapped to spec `R-n`) and any deferred scope;
+- Final SHA check counts vs base and link to `qa-report.md`;
+- Known follow-ups / unstable tests with tracker IDs;
+- Manual spot-checks and deploy/migration rollback notes for whoever releases.
 
-- what was built, by spec requirement, and what was left out or deferred;
-- the acceptance table (criterion, evidence, result) or a link to the QA report;
-- test results on the final SHA with counts;
-- known issues, unstable tests, follow-ups with their tracker items;
-- what a person should check by hand, and how;
-- for data or configuration changes: what runs on deploy, what it touches and
-  how to undo it. This is information for whoever releases; releasing is not
-  part of this run.
-
-Then stop. Merging this pull request, deploying and anything after are the
-user's separate requests ([SKILL.md](../SKILL.md#scope)). Report the final
-state, disable the run's schedule, and close leads, sessions, worktrees and
-per-lane resources by the [standing cleanup](advisor-operations.md#standing-cleanup-every-pass-unprompted)
-rules.
+Disable the run's schedule, run a final `audit-lanes.mjs` sweep, and stop.
 
 ## Follow-ups and lessons
 
-- **Follow-up ledger.** One file per run: every finding deferred at a task's
-  acceptance, with its source, severity, owner and state. The Advisor reviews
-  it at each wave gate; an item that can lose data, money or access is raised
-  to the user at once, not carried to the end.
-- **Numbers worth keeping.** Per task: fix rounds, findings by stage. Per run:
-  defects found at the wave gate and at final QA that a task's own QC should
-  have caught, and the count of unstable tests. They show where the process
-  leaks, which is the point of counting.
-- **Notes on the process.** After each accepted or abandoned task, each wave
-  gate and final QA, the Advisor adds what it learned about the process to
-  `skill-notes.md` in the run folder: what escaped a stage and why, which rule
-  would have caught it, what slowed lanes down, where the skill was silent or
-  got in the way. Leads send such observations to the Advisor in their
-  messages.
-- **Lessons and proposals.** At the end of the run the Advisor sorts the notes
-  into lessons about this project (for its rule files or the next run's team
-  rules), lessons of this run only, and lessons about the process (candidates
-  for this skill), writes them to `lessons.md`, and puts the proposals, if
-  there are any, in the final report for the user to decide.
-  [Improving this skill](improvement.md) gives the note format, the sorting and
-  how an approved change is applied. Do not edit the project's rule files or
-  this skill on your own.
+Maintain the follow-up ledger, per-task fix-round metrics (especially defects
+that escaped task QC into Wave gates or Final QA), and append process friction
+to `skill-notes.md` for end-of-run sorting via [improvement.md](improvement.md).

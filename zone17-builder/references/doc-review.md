@@ -1,124 +1,89 @@
-# Document review
+# Document review (Phase 1)
 
-How a spec or a plan is reviewed in phase 1. The author's draft is checked by a
-reviewer that did not write it and does not share the author's context, because
-an author rereading their own document sees what they meant, not what it says.
+Every spec and plan is reviewed by an independent agent (or panel) that did not
+author it and receives no hidden chat context — only the document, its sources,
+`project-profile.md` and repository access.
 
-## The reviewer
+## Single reviewer vs Multi-vendor Review Panel
 
-- A separate agent instance on the profile the user chose (SKILL.md, "Roles in
-  phase 1"). Start it through the harness as its own session, or as an
-  in-process subagent when the user accepts that. It receives files and a
-  contract, never the author's reasoning or this conversation.
-- Record the requested and the effective model. On a proven launch failure move
-  to the next entry of the user's list; when the list is exhausted, ask the
-  user rather than reviewing your own document.
-- The same reviewer session may serve every round of one document and then the
-  plan; it keeps useful context. Start a fresh one when its context fills up or
-  it starts defending its earlier findings instead of rereading.
+- Load `doc_reviewer` (and optional `high_risk_panel`) from
+  `~/.agents/zone17-roster.json` when present, confirming once with the user;
+  otherwise ask once and offer to save the preset
+  ([cook.md](cook.md#roster-presets)). Never invent a model or self-review in
+  the Author session.
+- **Standard mode:** one independent reviewer on a different model (ideally a
+  different model family from the Author; note if same-model fallback occurs).
+- **Panel mode (recommended for Round 1 `full` review of complex specs/plans):**
+  spawn 2 reviewers from **different model families** in parallel (e.g. Claude +
+  GPT/Codex or Gemini). Each runs the round's lenses independently; the Author
+  merges and deduplicates their triaged findings. Cross-family panels catch
+  architectural blind spots at Phase 1 token cost instead of Phase 2 rework cost.
 
-## Contract for the reviewer
+## Reviewer contract
 
-Give it a self-contained contract (a file in the run folder), with absolute
-paths:
+Write a self-contained contract file in the run folder with absolute paths:
 
 ```yaml
 role: document reviewer
-document: <path of the spec or plan>
+document: <absolute path of spec or plan>
 kind: spec | plan
-round: <n>, full | delta
-sources: <what the document must agree with: requirement sources and saved copies for a spec; the approved spec for a plan>
-repository: <checkout path, so that claims about code can be checked>
-project_profile: <path>
-method: <absolute path of this file>; lenses in <absolute path of lenses/>
-lenses: <the list for this round, from the table below>
-style: <the project's documentation rules, document language, reader type>
-previous_findings: <report path of the last round, for a delta round>
-may_edit: false | true (only in a review-and-fix round)
-report: <path for the report in the run folder>
+round: <1 | 2 | 3>, <full | delta>
+sources: <requirement sources/snapshots for spec; approved spec path for plan>
+repository: <checkout path to verify claims about existing code>
+project_profile: <absolute path>
+method: <absolute path of doc-review.md>; lenses in <absolute path of lenses/>
+lenses: <list for this round>
+style: <project doc rules, language, reader type>
+previous_findings: <prior round report path, or null>
+may_edit: false # true only if explicitly requested in Round 2 delta
+report: <output report path in run folder>
 ```
 
-Tell it to change nothing but the report, unless `may_edit` is true, and never
-to commit, push or touch the tracker.
+The reviewer modifies nothing outside `report` (unless `may_edit: true`) and
+never commits, pushes or mutates trackers.
 
-## Lenses
+## Lenses per round
 
-Each lens is one pass with one method. Recipes are in `lenses/`
-([README](lenses/README.md)); the reviewer loads the files and runs them as
-written. With subagents available it runs the independent lenses in parallel,
-each seeing the document and the contract but no other lens's findings.
-
-| Lens | File | Spec | Plan | What it looks for |
+| Lens | File | Spec | Plan | Focus |
 | --- | --- | --- | --- | --- |
-| `adversarial` | `lens-adversarial.md` | full round | full round | What is missing or wrong; at least ten findings |
-| `edge-case-hunter` | `lens-edge-case-hunter.md` | every round | every round | States, boundaries and paths the document leaves unhandled |
-| `traceability` | `lens-traceability.md` | every round | every round | Sources, requirements, criteria, tasks and tests that do not line up |
-| `test-impact` | `lens-test-impact.md` | criteria only | every round | Criteria nobody can test; impact rows that are missing or unchecked |
-| `structure` | `lens-structure.md` | last round | last round | Shape: cuts, merges, moves |
-| `prose` | `lens-prose.md` | last round, after `structure` | last round, after `structure` | Wording that blocks understanding |
+| `adversarial` | `lens-adversarial.md` | Round 1 (`full`) | Round 1 (`full`) | Missing requirements, broken assumptions, unstated failure modes (`[]` allowed if tight; zero filler) |
+| `edge-case-hunter` | `lens-edge-case-hunter.md` | Every round | Every round | Unhandled states, boundaries, concurrency and lifecycle transitions |
+| `traceability` | `lens-traceability.md` | Every round | Every round | Source ↔ `R-n` ↔ `AC-n` ↔ task ↔ test breaks and repo path mismatches |
+| `test-impact` | `lens-test-impact.md` | Criteria check | Every round | Untestable criteria, wrong test levels, missing negative/risk tests, missing impact rows |
+| `structure` | `lens-structure.md` | Final round | Final round | Organization: cuts, merges, ordering |
+| `prose` | `lens-prose.md` | Final round (after `structure`) | Final round (after `structure`) | Clarity and concision (`word_metrics.py`) |
 
-`adversarial` runs only in the full round: it must return at least ten
-findings, so running it every round would keep the loop from ever settling.
-The editorial lenses run once, on the last round, when content has stopped
-moving; they never challenge content, only how it is organized and expressed.
+Run independent lenses in parallel subagents when supported, passing each lens
+only the document and contract (never another lens's output).
 
-## Triage
+## Triage & grading
 
-The lenses raise candidates; the reviewer judges each one after all lenses
-report, and no finding is dropped silently:
+After lenses complete, the reviewer verifies every candidate against the
+document, sources and repository code (quoting conflicting lines) and assigns
+one grade:
 
-1. Check the claim against the document, its sources and, for claims about
-   existing behaviour, the code. A finding that cites a file or a rule must
-   quote it.
-2. Grade it:
-
-| Grade | Meaning | Effect |
+| Grade | Meaning | Action |
 | --- | --- | --- |
-| `blocking` | The document is wrong, contradicts a source, or leaves out something a team would build wrongly without | Must be fixed before the gate |
-| `should-fix` | Real and worth fixing; a careful team would probably cope | Fixed, or deferred by the author with a written reason |
-| `minor` | Real, small | Author's choice |
-| `needs-human` | Only the human can settle it: a business rule, scope, a missing fact | Goes into the next question batch |
-| `false` | Checked; the problem does not exist here | Listed with what disproves it |
+| `blocking` | Wrong, contradicts source/code, or omits something that causes a team to build the wrong thing | Must fix before gate |
+| `should-fix` | Real gap worth closing | Fix, or defer with written rationale |
+| `minor` | Small real improvement | Author's discretion |
+| `needs-human` | Business rule, scope or stakeholder data only the human can decide | Batched to the human |
+| `false` | Disproved against the document/repo | Recorded in `rejected` with refutation |
 
-   When the harm is real but its size is unclear, take the higher grade.
-3. A project rule outranks a lens's opinion: a finding that asks for something
-   the rules forbid is `false`; a rule violation is at least `should-fix`.
+Project rules outrank lens preferences. Each finding carries a stable ID
+(`S<round>-<n>` or `P<round>-<n>`), lens, location, one-line trigger, proposed
+fix, consequence, grade, and verification check.
 
-Each finding in the report has a stable ID (`S<round>-<n>` for a spec,
-`P<round>-<n>` for a plan), the lens, the location (section and line), the
-problem in one line, the proposed fix, the consequence if it ships, the grade,
-and what would prove it fixed.
+## Bounded rounds (max 3) & single-writer discipline
 
-## Rounds
-
-| Round | Reviewer | Author |
-| --- | --- | --- |
-| 1, full | Runs the full-round lenses, triages, writes the report. Edits nothing | Answers every finding: fixes it, or rejects it with a reason. Rejections go into the document's review log. Asks the human the `needs-human` batch |
-| 2, delta | Settles each earlier finding as `resolved`, `open` or `superseded`; reviews what changed; runs the editorial lenses. When `may_edit` is true it fixes what remains itself and lists each edit | Reads the reviewer's edits (diff against the snapshot); disagreement goes to the human |
-| 3, only if round 2 left a `blocking` finding open | One more delta, limited to the open findings | Fixes |
-
-After round 3, stop and take what is still open to the human with both views.
-More rounds rarely converge; they usually mean the document needs a decision,
-not another review.
-
-A finding the author and the reviewer disagree on is never closed by whoever
-speaks last: it goes to the human with the author's reasoning and the
-reviewer's counterexample.
-
-## One writer at a time
-
-- Snapshot the document into the run folder before each round, so that every
-  round can be diffed.
-- While the reviewer works, the author does not edit the document. In a
-  review-and-fix round the reviewer is the only writer.
-- For a plan, run `plan-lint` after every edit by anyone.
-
-## Closing the loop
-
-The loop is closed when no `blocking` finding is open, every `should-fix` is
-fixed or deferred with a reason, `needs-human` findings are answered or parked
-as open questions with the parts they block, and for a plan the lint passes.
-
-Append a short entry to the document's review log (round, reviewer model,
-counts by grade, what was rejected and why, report path), update the builder
-state, and go to the gate.
+- Snapshot the document before each round; never edit while the reviewer runs;
+  run `plan-lint.mjs` after every plan edit.
+- **Round 1 (`full`):** full lenses → Author fixes, logs reasoned rejections,
+  and batches `needs-human` questions to the user.
+- **Round 2 (`delta`):** settles Round 1 findings (`resolved`, `open`,
+  `superseded`), checks changed sections, and runs `structure` + `prose`.
+- **Round 3 (`delta`, only if a `blocking` item remains):** scoped strictly to
+  open `blocking` items. If anything remains disputed after Round 3, present
+  both sides to the human rather than looping further.
+- Close the loop by appending a summary row to the document's Review Log and
+  updating `builder-state.json`.

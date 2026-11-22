@@ -1,181 +1,197 @@
 ---
 name: zone17-builder
 description: >-
-  Take a piece of work from request to final pull request in two gated phases.
-  Phase 1, documents: write a spec, then an implementation plan with a task
-  pipeline, per-task impact outside the task and a full test plan; an
-  independent reviewer model reviews both with bundled review lenses, unclear
-  points go back to the human, and the human approves each document. Phase 2,
-  cook: execute the plan with parallel worktree teams, independent test and
-  review per task, QC gates, wave and final QA, ending at the final pull
-  request. Use whenever the user wants to build a feature or a batch of work
-  end to end, write or review a spec or an implementation plan, break work
-  into a task pipeline, or execute ("cook") a plan with agent teams, and for
-  "zone17-builder", "lên spec", "lên plan", "cook plan". Works in any project:
-  commands, rules and tracking are discovered from the current project.
-  Loading this skill alone does not start a team or a schedule.
+  Take work from request to final pull request in two gated phases. Phase 1,
+  documents: run empirical spikes when needed, write a spec, then an
+  implementation plan with domain shapes, a task pipeline, per-task external
+  impact and a full test plan; an independent reviewer (or multi-model panel)
+  reviews both with bundled lenses, unclear business points go to the human in
+  batches, and the human approves each gate. Phase 2, cook: the Orchestrator
+  executes waves of parallel lane teams (each lane led by a coordinate-only
+  Advisor or a hands-on Lead, with strict worker engineering principles,
+  2-strike fresh-worker recovery, execution-proven review, mechanical evidence
+  and worktree audits, wave gates and final QA), ending at the final pull
+  request. Use whenever the user wants to build a feature or batch end to end,
+  write or review a spec or plan, or cook an approved plan ("zone17-builder",
+  "lên spec", "lên plan", "cook plan"). Project-neutral. Loading this skill
+  alone does not start a team or a schedule.
 ---
 
 # Zone17 Builder
 
-One workflow from a request to the final pull request, in two phases with a
-human gate between every step that commits the team to something.
+One repeatable engineering workflow from request to the final pull request, in
+two phases with explicit human gates and mechanical checks at every boundary.
+`zone17-builder` supersedes `zone17-cook-plan` (v1) for all new runs, including
+runs that start directly from an existing plan (`zone17-builder cook`).
 
 ```text
-Phase 1 · Documents (this session is the author)
-  intake -> questions -> SPEC -> review loop -> G1 human approves the spec
-         -> PLAN (pipeline, impact, test plan) -> lint -> review loop
-         -> G2 human approves the plan
-Phase 2 · Cook (this session becomes the Advisor)
-  G3 human says start -> waves of task teams (code -> test -> review -> QC)
-         -> wave gate on the integration branch -> final QA task
-         -> G4 final pull request, QA report attached   <- the run ends here
+Phase 1 · Documents (this session is the Author)
+  intake (+ empirical spike when needed) -> question batch -> SPEC -> review loop
+         -> G1 human approves spec
+         -> PLAN (domain shapes, pipeline, impact, test plan) -> plan-lint -> review loop
+         -> G2 human approves plan
+Phase 2 · Cook (this session becomes the Orchestrator)
+  G3 human says start (+ preset roster confirmed)
+         -> waves of task lanes: Advisor (coordinate-only) or Lead (hands-on + coordinate)
+            runs Worker (with worker-principles) -> Tester -> Reviewer -> verify-evidence
+         -> Orchestrator reruns merge checks + audit-lanes -> wave gate on integration branch
+         -> final QA task -> G4 final pull request with QA report   <- the run ends here
 ```
 
 ## Scope
 
-The skill covers the original request up to the final pull request. Merging
-that pull request, deploying, releasing and anything else outside the approved
-spec are separate requests the user makes when they want them; do not start
-them as "the obvious next step". During the run the user may ask for extra work;
-handle it as a [change request](#change-requests) or report it beside the plan
-as work outside it, never by quietly growing the scope.
+The skill covers the request up to opening (or preparing) the final pull
+request. Merging that pull request, deploying, releasing and work outside the
+approved spec are separate requests the user makes when they want them; never
+start them as "the obvious next step". Extra work requested mid-run goes through
+[change requests](#change-requests) or stays beside the plan's scope as
+outside-plan counts, never silently inflating the scope.
 
-The skill is project-neutral. Nothing in it names a stack, a tracker, a branch
-model or a test command. Read those from the current project every time
-([project profile](references/project-profile.md)) and never carry a value from
-another project into this one, even one you remember well.
+The skill is project-neutral: no stack, tracker, branch model or test command is
+hardcoded here. Discover them per run in
+[project-profile.md](references/project-profile.md) and never carry values over
+from another project.
 
 ## Invocation
 
-`zone17-builder [spec | plan | cook | status] [harness=<name>]`
+`zone17-builder [spec | plan | cook | status | setup] [harness=<name>]`
 
-- No phase word: resume from the builder state if one exists; otherwise start
+- No phase word: resume from `builder-state.json` when present; otherwise start
   at `spec`.
-- `spec`, `plan`, `cook`: enter that phase. A phase whose gate is not met (a
-  plan without an approved spec, a cook without an approved plan) can be
-  entered only with a document the user supplies; bring that document up to
-  what the phase needs first, by [adopt.md](references/adopt.md).
-- `status`: report gates, open questions, review rounds and, during cook, the
-  Advisor progress report. Change nothing.
-- `harness=<name>` selects the runtime for cook and for reviewer sessions;
-  default `orca`. See [cook](references/cook.md#select-the-harness).
+- `spec`, `plan`, `cook`: enter that phase. Entering `plan` without G1 or `cook`
+  without G2 is allowed only when the user supplies an existing document; bring
+  it up to standard first via [adopt.md](references/adopt.md).
+- `status`: read-only report of gates, open questions, review rounds and, during
+  cook, the Orchestrator progress report. Change nothing.
+- `setup`: create or update the user's saved default model roster at
+  `~/.agents/zone17-roster.json` so future runs confirm models in one step
+  ([Roster presets](references/cook.md#roster-presets)).
+- `harness=<name>` selects the runtime for cook and external reviewer sessions;
+  default `orca`. See [cook.md](references/cook.md#select-the-harness).
 
 ## What to read, and when
 
 | When | Read |
 | --- | --- |
-| Always first, before any writing | [project-profile.md](references/project-profile.md) |
-| Writing or changing a spec | [spec.md](references/spec.md), `assets/spec-template.md` |
-| Writing or changing a plan | [plan.md](references/plan.md), `assets/plan-template.md` |
-| A spec or a plan already exists | [adopt.md](references/adopt.md) |
-| Before sending any document to review | [doc-review.md](references/doc-review.md) |
-| The user says start cooking | [cook.md](references/cook.md), then the files it names, then [qa-qc.md](references/qa-qc.md) |
+| Always first, before writing or cooking | [project-profile.md](references/project-profile.md) |
+| Writing or updating a spec | [spec.md](references/spec.md), `assets/spec-template.md` |
+| Writing or updating a plan | [plan.md](references/plan.md), `assets/plan-template.md` |
+| Adopting an existing spec or plan | [adopt.md](references/adopt.md) |
+| Before sending a spec or plan to review | [doc-review.md](references/doc-review.md) |
+| Configuring or updating saved role models | [cook.md](references/cook.md#team-roster) |
+| The user says start cooking (G3) | [cook.md](references/cook.md), [worker-principles.md](references/worker-principles.md), [qa-qc.md](references/qa-qc.md), and the files `cook.md` names |
 | Closing the run | [qa-qc.md](references/qa-qc.md#final-qa-task), `assets/qa-report-template.md` |
-| After each gate, each accepted task, and at the end of the run | [improvement.md](references/improvement.md) |
+| After each gate, accepted task, wave gate and run close | [improvement.md](references/improvement.md) |
 
-Do not load the cook references during phase 1; they are long and only matter
-once teams run.
+Do not load Phase 2 (`cook.md`, `orchestrator-*.md`, `harness/*`) during Phase 1;
+guard the context window until teams actually run.
 
 ## Gates
 
-A gate is passed only by the evidence in its row. Record each pass in the
-builder state with a timestamp from the system clock and, for human gates, the
+A gate passes only on the evidence in its row. Record each pass in
+`builder-state.json` with a system-clock timestamp and, for human gates, the
 user's own words.
 
 | Gate | Passed when | Who passes it |
 | --- | --- | --- |
-| G0 intake | Project profile written; sources read; the first question batch answered or parked | Author |
-| G1 spec | Review loop closed with no open blocking finding; open questions listed with the tasks they block; the user approves | Human |
-| G2 plan | `plan-lint` exits 0; review loop closed; every acceptance criterion and impact row has a test; the user approves | Human |
-| G3 start | The user explicitly says to start cooking; roster confirmed; base branch is the one the plan names | Human |
-| G4 final PR | Final QA task accepted; QA report written; final pull request open, or reported ready where a person must open it | Advisor, then the run stops |
+| G0 intake | Project profile written; sources read; empirical spikes (if any) run; first question batch answered or parked | Author |
+| G1 spec | Review loop closed with zero open blocking findings; open questions name what they block; user approves | Human |
+| G2 plan | `plan-lint.mjs` exits 0; review loop closed; every AC and impact row has a test; user approves | Human |
+| G3 start | User explicitly says start cooking; roster confirmed (from preset or prompt); base branch verified | Human |
+| G4 final PR | Final QA task accepted (`verify-evidence.mjs` exits 0); QA report written; lanes audited clean (`audit-lanes.mjs` exits 0); final PR open or reported ready | Orchestrator, then the run stops |
 
-Approval of one gate does not carry to the next. An approved spec is not
-permission to cook, and "looks good" on a draft plan is not G3. When it is not
-clear which gate the user's words pass, ask.
+Approval of one gate never implies the next: approving a plan (G2) does not
+start cooking (G3). Ask when ambiguous.
 
-## Roles in phase 1
+## Role summary across phases
 
-- **Author**: the current session. It writes the spec and the plan, answers
-  findings, and owns the documents between review rounds.
-- **Document reviewer**: an independent agent on a model the user chooses. Ask
-  for it once, at the first review, as an ordered list (`<agent> <model>
-  [effort]`, primary first, then fallbacks); reuse the answer for later rounds
-  and for the plan. Never invent a model. A reviewer on the same model as the
-  author reviews more shallowly, so say so when that happens.
-- **Human**: decides business meaning, scope, and every gate.
+- **Phase 1 (Documents):**
+  - **Author**: this session; writes the spec and plan, runs empirical spikes
+    when needed, resolves review findings, and records decisions.
+  - **Document Reviewer**: an independent agent (or a **2-model cross-vendor
+    panel** for full rounds when configured) chosen by the user or loaded from
+    `~/.agents/zone17-roster.json`. Never self-review on the Author session.
+  - **Human**: owns business rules, scope tradeoffs and gates G1–G3.
+- **Phase 2 (Cook):**
+  - **Orchestrator**: the top-level run coordinator (this session initially, then
+    the reused automation session after handover). Owns the parent Run, wave
+    dispatch, escalations, merge verification, wave gates, final QA acceptance
+    and standing host cleanup.
+  - **Advisor** *(lane coordinator)*: owns **one** plan task's lane when the
+    lane runs in pure coordination mode — dispatches workers, testers and
+    reviewers, merges worker commits, runs `verify-evidence.mjs` and prepares
+    the acceptance packet; **edits no product code**.
+  - **Lead** *(working lane lead)*: owns **one** plan task's lane when the lane
+    combines implementation and coordination — implements its `focus` slice
+    itself, dispatches remaining work to workers in parallel, merges commits,
+    and **never tests or reviews its own code**.
+  - **BE Worker / FE Worker**: implement scoped code and fixes under
+    [worker-principles.md](references/worker-principles.md).
+  - **BE Reviewer / FE Reviewer**: run execution-grounded reviews
+    ([review-method.md](references/review-method.md)); `high` risk tasks can use
+    a cross-vendor reviewer panel.
+  - **Tester / Tester cloud / Tester visual / Bridge lead**: independent test
+    execution, remote runner driving, deterministic visual diffs, and remote
+    host relay ([cook.md](references/cook.md#team-roster)).
 
-The reviewer's method, the bundled lenses and the round limits are in
-[doc-review.md](references/doc-review.md). The lenses are copied into this skill
-(`references/lenses/`), so no project and no host needs BMAD installed.
+## Asking the human (and settling empirical forks yourself)
 
-## Asking the human
-
-Unclear points are the main source of rework, so surface them early and ask
-well:
-
-- First try to answer from the code, the project's documents and earlier
-  decisions; cite where the answer came from. Ask only what is truly the
-  human's to decide: business rules, scope, priorities, trade-offs, data that
-  only they or their analysts hold.
-- Ask in batches at natural points (after intake, after each review round),
-  not one interruption per doubt. Each question states what you found, the
-  options, what each option costs, and your recommendation.
-- Never fill a gap with invented business data to keep moving. An unanswered
-  question goes into the document's open-questions section with its owner and
-  the tasks it blocks; work that does not depend on it continues.
-- Record every answer in one decision record: the user's words, the system
-  time, and what it supersedes. Then update the document; a decision that lives
-  only in chat is lost to reviewers and to the teams in phase 2.
+- **Code and experiments before questions.** Check the codebase, git/PR history
+  and project docs first; cite what you found. When a technical, performance or
+  layout fork can be settled by a quick throwaway spike/prototype, run the spike
+  and bring measured facts instead of asking the human to guess
+  ([spec.md](references/spec.md#empirical-spikes)).
+- **Ask only what belongs to the human:** business rules, scope, priorities,
+  irreversible tradeoffs, and domain data only stakeholders hold.
+- **Batch questions** at natural boundaries (after intake, after a review round),
+  stating what you found, options, costs, and a concrete recommendation.
+- **Never invent business facts.** Park unanswered questions in Open Questions
+  with their owner and blocked IDs; continue unblocked work.
+- **Persist decisions immediately** in the run's decision record (user's words,
+  timestamp, superseded ID) and write them back into the spec/plan.
 
 ## Builder state
 
-Keep one small state file per run, `builder-state.json`, in the run folder
-([project profile](references/project-profile.md#run-folder)): request summary,
-the skill version the run started with (top entry of `CHANGELOG.md`, plus the
-repository commit when known), document paths and versions, reviewer profile
-(requested and effective), review rounds with report paths, open questions,
-gate passes, and during cook a pointer to the cook run manifest. Recover from it before creating anything; a
-conversation summary is not a substitute. Never store credentials there.
+Persist `builder-state.json` in the run folder
+([project-profile.md](references/project-profile.md#run-folder)): request
+summary, skill version (`CHANGELOG.md` top version + commit when known),
+document paths/versions, roster preset or custom role profiles, review rounds and
+report paths, open questions, gate receipts, and during Phase 2 a pointer to the
+cook `run-manifest.json`. Always recover from `builder-state.json` before
+creating anything. Never store secrets there.
 
 ## Change requests
 
-A requirement that changes after G1 is a change request, whoever raises it:
+Any requirement change after G1 follows four steps:
 
-1. Write a spec addendum (or a new spec version) that says what changes and
-   what it supersedes; ask what is unclear.
-2. Update the plan: new or changed tasks, their impact rows and tests, the
-   pipeline, and the weights. Run `plan-lint`.
-3. Send only the changed parts through the review loop.
-4. Get the user's approval, then bump the scope version. During cook, tell the
-   affected leads, and report the new denominator explicitly.
+1. Write a spec addendum (or bumped version) naming what changed and what it
+   supersedes; batch any unclear business questions.
+2. Update affected plan tasks, domain shapes, impact rows, tests, pipeline waves
+   and weights. Run `node <skill-root>/scripts/plan-lint.mjs <plan.md>`.
+3. Run delta [document review](references/doc-review.md) on the changed sections.
+4. Obtain human approval, bump `scope_version`, notify affected live `Advisor` /
+   `Lead` lanes, and report the updated denominator explicitly.
 
-Small clarifications that change no behaviour are recorded as decisions without
-this loop. Work the user asks for outside the spec stays outside the plan's
-percentage unless they ask to add it.
+## Continuous skill improvement
 
-## The skill improves with use
-
-Each run leaves notes about the process itself: a rule that was missing,
-unclear, wrong, or heavier than what it caught. The Advisor writes them to
-`skill-notes.md` in the run folder as it goes, sorts them at the end of the run
-(this project, this run only, or the process in general), and proposes changes
-to the human when there are any worth making. Nothing is proposed for the sake
-of proposing. An approved change is made in the skill's source repository with
-a `CHANGELOG.md` entry and then copied to every host; an installed copy is
-never edited by hand, and a run in progress keeps the version it started with.
-The method is in [improvement.md](references/improvement.md).
+During every run, record process friction in `skill-notes.md` and sort lessons
+at run close via [improvement.md](references/improvement.md), prioritizing
+structural fixes (architecture, types, mechanical scripts in `scripts/`, tests)
+before adding prose rules. Edit only in the source repository after human
+approval, record in `CHANGELOG.md`, and sync installed copies.
 
 ## Bundled resources
 
-- `scripts/plan-lint.mjs`: checks a plan's pipeline table against its task
-  sections (unknown or circular dependencies, wave numbers, weights, missing
-  fields, acceptance criteria without a test). Run with Node; `--help` lists
-  options and the label aliases it accepts.
-- `scripts/word_metrics.py`: word counts for the editorial lenses.
-- `assets/`: spec, plan and QA report templates. Write documents in the
-  project's document language; keep the template's field labels or their listed
-  aliases so the lint can read the plan.
-- `references/lenses/`: review lens recipes for code and documents.
-- `harness/`: runtime adapters for cook and reviewer sessions.
+- `scripts/plan-lint.mjs`: mechanical DAG, wave, weight, AC-to-test, domain
+  shape and impact checker for Markdown plans.
+- `scripts/verify-evidence.mjs`: mechanical QC validator for task/QA evidence
+  packets (AC coverage, SHA match, exit codes, log files, base-vs-head test
+  counts, regression checks, red-first failure proofs, review verdict).
+- `scripts/audit-lanes.mjs`: mechanical worktree-budget (max 5/lane), uncleaned
+  merged-branch, and manifest weight-ledger auditor for every Orchestrator pass.
+- `scripts/word_metrics.py`: exact section word counts for editorial lenses.
+- `assets/`: `spec-template.md`, `plan-template.md`, `qa-report-template.md`.
+- `references/worker-principles.md`: mandatory code-craft & anti-slop rules for
+  every `Lead`, `Advisor` and `Worker`.
+- `references/lenses/`: self-contained review lenses for documents and code.
+- `harness/`: runtime adapters (`orca` default, `_template` for new runtimes).

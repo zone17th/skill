@@ -1,92 +1,91 @@
 # Phase 1a: Spec
 
 The spec states what will be true when the work is done and how anyone can
-check it. It does not say how to build it; that is the plan. A good spec lets a
-reviewer who never saw this conversation find the gaps, and lets a tester in
-phase 2 write tests without asking what "works" means.
+verify it. It does not prescribe internal implementation; that belongs in the
+plan. A strong spec lets an independent reviewer catch gaps without reading this
+chat, and lets a Phase 2 Tester write behavioral tests without asking what
+"works" means.
 
 ## 1. Intake
 
-1. Restate the request in two or three sentences and list what the user gave
-   you: requirement documents, designs, tickets, examples, earlier specs.
-2. Read every source in full. When a source lives outside the repository and
-   can change (a wiki page, a design canvas), save a dated copy where the
-   project keeps such copies, so that the reviewer and later the teams read the
-   version you read. Note any source you could not open.
-3. Read the code the request touches before writing about it. Record current
-   behaviour with file references. Requirements written without looking at the
-   code describe a system that does not exist.
-4. Draw the boundary: what is in scope, what is explicitly out, and what
-   existing behaviour must not change.
+1. Restate the user's goal in two or three sentences and inventory every source
+   provided: requirement docs, designs, tickets, examples, prior specs.
+2. Read every source in full. When an external source can mutate (wiki, Figma
+   frame, shared doc), save a dated snapshot where the project stores references
+   so reviewers and Phase 2 lanes read the exact version you read.
+3. **Read the touched code first.** Record current behavior with `file:line`
+   references. Specs written without reading the codebase describe an imaginary
+   system.
+4. Draw explicit boundaries: **in scope**, **out of scope**, and **must not
+   change**.
 
-## 2. Find what is unclear
+## 2. Empirical spikes (settle technical forks before asking or freezing)
 
-Go through the request looking for the things that cause rework later:
+Before turning technical doubts into guesses or human questions, check whether a
+quick experiment can settle them:
 
-- terms used two ways, or two sources that disagree;
-- a rule stated for the normal case only: what happens at zero, at the limit,
-  on the second attempt, when two people do it at once, when it fails halfway;
-- behaviour for each role and each state of the data, not only the main one;
-- anything about existing data or users when the new rule arrives;
-- numbers without units or bounds, and lists that end in "etc.";
-- a requirement with no way to observe that it holds.
+- When feasibility, API behavior, query/render latency, library compatibility,
+  or layout fidelity is uncertain and can be measured in 15–30 minutes, run a
+  **throwaway spike/prototype** in an isolated scratch branch or temp script
+  (never on the integration or default branch).
+- Record the measured result (command, numbers, tradeoffs) in the spec's
+  *Sources* or *Current state* section and delete the throwaway edits.
+- Never ask the human to guess an engineering fact the codebase or a 15-minute
+  run can prove.
+
+## 3. Find what is unclear
+
+Scan the request for rework traps:
+
+- terms used inconsistently, or sources that disagree;
+- happy-path-only rules: behavior at zero, at bounds, on duplicate/concurrent
+  submission, or on partial failure;
+- behavior across every user role and data state;
+- migration behavior for existing records and in-flight sessions;
+- numbers without units/bounds, or open-ended lists ending in "etc.";
+- requirements with no observable check.
 
 Sort each item:
 
-| Kind | What to do |
+| Kind | Action |
 | --- | --- |
-| The code or the project's documents already answer it | Answer it yourself and cite the source |
-| A business or scope decision | Ask the human, following "Asking the human" in SKILL.md |
-| A reversible detail with an obvious default | Write it as a labelled assumption and list it for confirmation at G1 |
-| Data only the business holds (real lists, prices, wording that must be exact) | Ask; leave it empty and marked until answered. Never invent it |
+| Answered by code, git/PR history or project docs | Answer it yourself and cite `file:line` or commit/PR |
+| Empirical technical/performance fork | Run a bounded throwaway spike (Section 2) and cite the result |
+| Business rule, scope or product tradeoff | Batch for the human per "Asking the human" in [SKILL.md](../SKILL.md) |
+| Reversible detail with an obvious default | State as a labelled assumption to confirm at G1 |
+| Exact business data only stakeholders hold | Ask; leave marked and empty until answered — never invent it |
 
-Ask the first batch before writing the spec body, so the answers shape it.
-Later batches come out of the review loop.
+Ask the first question batch before drafting the full spec body so the answers
+shape the structure.
 
-## 3. Write the spec
+## 4. Write the spec
 
-Start from `assets/spec-template.md`, in the project's document language and at
-the project's document location. Rules that make the spec usable downstream:
+Start from `assets/spec-template.md`, in the project's document language and
+location:
 
 - **Stable IDs.** Requirements `R-n`, acceptance criteria `AC-n`, decisions
-  `D-n`, open questions `Q-n`. The plan, the tests and the QA report all point
-  at these IDs, so never renumber; retire an ID instead.
-- **Observable acceptance criteria.** Each one names a condition someone can
-  check: an input and the result, a state and what the user sees, a request and
-  the response. "Works correctly" and "is fast" are not criteria. Give negative
-  criteria too: what is refused, and with which error.
-- **Every requirement has at least one criterion**, and every criterion points
-  back to a requirement.
-- **Effect on what exists.** Say what changes for existing data, existing users,
-  existing screens and other parts of the system. This section seeds the plan's
-  "impact outside the task" rows, so be specific about what and where.
-- **Non-functional requirements only where they apply**: security and
-  permissions, performance with a number, accessibility, languages,
-  compatibility. Take the project's standing requirements from the profile
-  instead of restating them.
-- **Decisions keep their trail**: who decided, when, in what words, and what
-  was superseded.
-- **Open questions are honest.** Each has an owner, a recommendation, and the
-  requirements it blocks. A spec may pass G1 with open questions only when the
-  user accepts that the blocked parts wait.
+  `D-n`, open questions `Q-n`. Never renumber retired IDs; mark them retired.
+- **Observable acceptance criteria.** Every `AC-n` states starting state, action
+  and observable outcome — plus negative/refusal criteria (what is rejected and
+  with which error). "Works properly" and "fast" are invalid.
+- **Bidirectional links.** Every `R-n` has at least one `AC-n`, and every `AC-n`
+  maps to an `R-n`.
+- **Effect on what exists.** Name affected existing data, users, screens, jobs
+  and modules with paths; this seeds the plan's *Impact outside the task* rows.
+- **Measurable non-functional requirements** only where applicable (security,
+  latency/throughput numbers, a11y, i18n), referencing `project-profile.md`
+  rather than repeating standing repo rules.
+- **Decision trail & honest open questions.** Record who decided what, when, in
+  their words, and what `Q-n` blocks which `R-n`.
 
-Before review, read the spec once as someone who was not in the conversation:
-is every term defined, is every "as discussed" replaced by what was discussed.
+## 5. Review loop & Gate G1
 
-## 4. Review loop
+Send the spec through [doc-review.md](doc-review.md) (single reviewer or a
+2-model cross-vendor panel). Route `needs-human` items into a single question
+batch, resolve blocking/should-fix findings, and stop at the 3-round cap.
 
-Send the spec through [document review](doc-review.md). Findings the reviewer
-marks `needs-human` become the next question batch. Fix, re-review, and stop at
-the round limit.
-
-## 5. Gate G1
-
-Give the user a short report: what the spec covers and leaves out, the decisions
-taken, assumptions to confirm, questions still open and what they block, and
-the review result (rounds, findings fixed, findings rejected with reasons).
-Ask for approval. Record the approval with the spec's version or commit.
-
-An approved spec is frozen. Later changes go through
-[change requests](../SKILL.md#change-requests). Committing the spec or opening
-a pull request for it follows the project's authorization rules; when they are
-silent, ask.
+At **Gate G1**, present a concise summary: scope in/out, spike findings (if
+any), decisions recorded, assumptions to confirm, open questions with blocked
+requirements, and review counts/rejections. Record the user's approval with the
+spec version/commit. After G1, the spec is frozen; modifications go through
+[change requests](../SKILL.md#change-requests).

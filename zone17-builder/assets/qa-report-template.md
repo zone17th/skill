@@ -1,12 +1,12 @@
 # QA report: <run title>
 
 > Spec: <path, version> · Plan: <path, version, scope version> · Integration branch: <name> @ <final SHA>
-> Base: <branch> @ <SHA> · Written: <system time> · By: <QA lead>, accepted by <Advisor>
+> Base: <branch> @ <SHA> · Written: <system time> · By: <QA Advisor/Lead>, accepted by <Orchestrator>
 
 ## 1. Verdict
 
-<ready for the final pull request | not ready>, with the reasons in two or
-three sentences. Name anything a person must decide.
+<ready for the final pull request | not ready>, with the reasons in two or three
+sentences. Name anything a human must decide.
 
 ## 2. Acceptance against the spec
 
@@ -28,14 +28,14 @@ New skips or fewer executed tests than the base, with reasons: <…>
 | Item (impact row or flow) | From task | Check | Result | Evidence |
 | --- | --- | --- | --- | --- |
 
-## 5. Wave gates
+## 5. Wave gates & lane hygiene
 
-| Wave | SHA | Result | Failures and what was done |
-| --- | --- | --- | --- |
+| Wave | SHA | Result | `audit-lanes.mjs` | Failures and resolution |
+| --- | --- | --- | --- | --- |
 
 ## 6. Visual sweep
 
-<Viewports, themes and languages covered; findings; or "no screens in this run".>
+<Viewports, themes and languages covered; deterministic diff outcomes; or "no screens in this run".>
 
 ## 7. Open items
 
@@ -49,12 +49,12 @@ New skips or fewer executed tests than the base, with reasons: <…>
 
 ## 9. For whoever releases
 
-<What runs on deploy (migrations, configuration), what it touches, how to undo
-it, and what to check afterwards. Releasing is outside this run.>
+<What runs on deploy (migrations, configuration), what it touches, how to roll
+back, and what to spot-check afterwards. Releasing is outside this run.>
 
-## 10. Numbers
+## 10. Process metrics
 
-- Tasks: <n>; fix rounds per task: <min / median / max>
+- Tasks: <n>; fix rounds per task: <min / median / max>; 2-strike fresh-worker resets: <n>
 - Findings by stage: test <n>, review <n>, wave gate <n>, final QA <n>
-- Found late (at a wave gate or final QA, should have been caught in a task): <n>, listed in lessons
+- Escaped task QC (caught at wave gate or final QA): <n>, recorded in `lessons.md`
 - Unstable tests: <n>

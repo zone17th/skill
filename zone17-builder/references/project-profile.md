@@ -1,81 +1,67 @@
 # Project profile
 
-The builder works in any project, so it starts by learning this one. Write what
-you learn to `project-profile.md` in the run folder and give its path to every
-reviewer, lead, worker and tester. They run in other sessions and other
-checkouts and inherit nothing from this conversation.
+`zone17-builder` is project-neutral, so every run starts by discovering this
+repository's facts and writing `project-profile.md` in the run folder. Pass its
+path in every contract (`Document Reviewer`, lane `Advisor`, lane `Lead`,
+`Worker`, `Tester`, `Reviewer`) because external sessions inherit nothing from
+this conversation.
 
-## Rules for the profile
+## Profile rules
 
-- Every fact carries its source: a file and line, a command you ran with its
-  output, or the user's words with a timestamp.
-- A fact you could not find is written as `unknown`, with who can answer. Ask
-  the user for the ones that block the current phase. Never guess, and never
-  reuse a value from another project because it "is usually like that".
-- The project's own rules win over this skill wherever they are stricter.
-  Where they say nothing, this skill's defaults apply.
-- Re-check the profile when the run moves to another host or checkout, and when
-  the project's rule files change.
+- Cite every fact (`file:line`, command + output, or user quote + timestamp).
+- Mark missing facts `unknown` with who can answer; ask the user only for items
+  blocking the current phase. Never guess or copy values from another project.
+- Stricter project rules always override this skill's defaults.
+- Re-verify when switching hosts/checkouts or when repo rule files change.
 
 ## What to discover
 
-Read the project's agent and contributor instructions first (`AGENTS.md`,
-`CLAUDE.md`, `CONTRIBUTING.md`, `README`, and every file they point to), then
-the build and CI configuration, then the code layout.
+Read `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `README` and linked docs
+first, then build/CI configs, then module layout:
 
-| Area | Find out |
+| Area | Discover |
 | --- | --- |
-| Rules | Rule files and their order of precedence; things agents must never do; files only certain people or roles may edit |
-| Authorization | What the agent may do without asking: commit, push, open a PR, merge, change tracker status. Default when unstated: ask before each |
-| Tracking | Tracker and its rules, if any: whether work needs an issue first, status flow, where evidence is recorded. No tracker rule means none is required |
-| Branches | Default branch, integration or release branches, naming, the merge target for this work, merge method, who merges |
-| Documents | Where specs and plans live, naming, language of documents, language the user speaks, documentation style rules |
-| Architecture | Stack, modules and their boundaries, layering rules, generated code that must not be hand-edited, shared files many tasks touch |
-| Commands | Install, lint, typecheck, unit, integration, end-to-end, build, performance and any other check, each with its working directory and toolchain version |
-| Test environment | Databases, services and ports tests need; how to isolate parallel runs; test data and seeds; what CI runs and on which branches |
-| Remote test runner | Whether one exists, its commands, cost and limits, how to close it |
-| UI | Design sources, design-system rules, supported viewports, themes, languages, accessibility requirements |
-| Risk areas | Domains this project treats as high risk (see below), plus any the user names |
-| Hosts | Machines available, their capacity limits, shared services that must not be stopped |
-| Done | The project's own definition of done for a task and for a pull request |
+| Rules | Rule precedence, forbidden actions, protected paths |
+| Authorization | Allowed without asking: commit, push, task PR, merge to integration, tracker updates. Default when silent: ask first |
+| Tracking | Issue tracker requirements, status transitions, evidence comment rules (`none` if unstated) |
+| Branches | Default branch, integration branch, branch naming, final PR target, merge method and merge owner |
+| Documents | Spec/plan paths, naming, document language, user chat language, doc style rules |
+| Architecture | Stack, module boundaries, layering invariants, generated files, high-contention shared files |
+| Commands | Exact install, lint, typecheck, unit, integration, contract, E2E, build and perf commands + cwd + pinned runtime versions |
+| Test isolation | DBs, services, ports, env vars, seed strategy, parallel-lane isolation, CI workflows |
+| Remote runner | Availability, launch/run/close commands, quotas/limits |
+| UI | Design sources, token/design-system rules, viewports, themes, i18n, a11y standards |
+| Risk areas | Project-specific `high` risk domains (augmenting defaults below) |
+| Hosts | Available local/remote machines, max concurrent lanes per host, shared services never to kill |
+| Done | Project definition of done for tasks and pull requests |
 
-## Risk tiers
+## Risk tiers (`standard` vs `high`)
 
-The plan gives each task a tier, and the tier decides which extra checks run in
-phase 2. Start from this default and adjust it to the project; record the
-project's list in the profile so authors, reviewers and testers use the same one.
+Task risk reflects the **cost of a defect**, independent of model strength. A
+task is `high` risk when touching:
 
-A task is `high` when it changes any of:
+- money, billing, pricing, refunds, balances, entitlements;
+- authentication, authorization, permissions, sessions, secrets;
+- production data shape: migrations, backfills, destructive deletes;
+- core trusted calculations (scoring, grading, ranking, quotas, scheduling);
+- concurrency, locking, retries or idempotency of repeatable actions;
+- personal, regulated or tenant-isolated data;
+- external/public contracts consumed by other teams or clients.
 
-- money: prices, payments, refunds, balances, entitlements;
-- authentication, authorization, sessions, secrets;
-- existing data: schema or data migrations, deletes, backfills;
-- a core business calculation the product is trusted for (scoring, billing,
-  ranking, quotas, scheduling);
-- concurrency or idempotency of an operation that can be sent twice;
-- personal or regulated data;
-- a contract other teams or systems consume.
+All other tasks are `standard`.
 
-Everything else is `standard`. A tier is about the cost of being wrong, not
-about how hard the task is or how good the model doing it is.
+## Run folder & decision record
 
-## Run folder
+Store run state in one durable folder outside the repository and outside
+disposable worktrees (using the project's convention when present, else
+confirming once with the user; zero secrets):
 
-One durable folder holds the run's state: `builder-state.json`, the profile,
-the decision record, review reports, snapshots, and in phase 2 the cook
-manifest, contracts, reports and evidence.
+- Phase 1: `builder-state.json`, `project-profile.md`, `decisions.md`, snapshots,
+  review reports, `skill-notes.md`.
+- Phase 2: `run-manifest.json`, task contracts, `<task>-evidence.json` packets,
+  raw test logs, unstable-test/follow-up ledgers, `qa-report.md`.
+- Versioned specs and plans live inside the repository at the project's document
+  path, not in the run folder.
 
-- Use the project's convention when it has one, including where earlier runs
-  of this skill put theirs.
-- Otherwise propose a folder outside the repository and outside any disposable
-  worktree, and confirm it with the user once.
-- Never put credentials, tokens, cookies or keys in it.
-- Documents the project versions (specs, plans) live in the repository at the
-  project's document location, not in the run folder.
-
-## Decision record
-
-One file in the run folder, append-only. Each entry: an ID, the system time,
-the question, the user's answer in their own words, what it supersedes, and the
-document sections it changed. A decision that changes a gate already passed
-needs the user's confirmation first.
+`decisions.md` is append-only: decision ID (`D-n`), system timestamp, question,
+user's exact words, superseded ID, and updated spec/plan sections.

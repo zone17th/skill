@@ -1,61 +1,39 @@
-# Starting from documents that already exist
+# Adopting existing specs and plans
 
-A spec or a plan written before this skill, or by other means, can enter the
-workflow. The aim is to bring it up to what the next phase needs, not to
-rewrite it: keep its content, its IDs and its language, and add what is missing.
+Bring an existing spec or plan up to the next phase's mechanical bar without
+rewriting approved substance: preserve its language, intent and existing IDs,
+and add only missing structure. Never migrate an already-cooking run mid-flight
+from legacy `zone17-cook-plan`; finish that run there and start the next phase
+or batch on `zone17-builder`.
 
-Do not move a run that is already cooking under another workflow onto this
-skill midway. Finish it there; adopt from the next run.
+## Adopting an existing spec
 
-## An existing spec
+1. Write `project-profile.md` and read the spec alongside its sources and code.
+2. Check against [spec.md](spec.md): stable `R-n` / `AC-n` / `D-n` / `Q-n` IDs
+   (add missing IDs without renumbering cited ones), observable positive and
+   refusal criteria, *Effect on what exists*, decision trail, and honest open
+   questions.
+3. Fill gaps in place (or via an addendum if the approved file is frozen).
+4. Run one [doc-review.md](doc-review.md) round with `traceability`,
+   `test-impact` and `edge-case-hunter` (skipping `adversarial` and editorial
+   lenses unless the user wants a full reopen).
+5. Batch `needs-human` items. If only formatting/IDs were added, record G1
+   standing on prior approval; if behavior changed, confirm G1 with the user.
 
-1. Write the project profile and read the spec with its sources and the code,
-   as intake would.
-2. Check it against what phase 1 requires of a spec ([spec.md](spec.md)):
-   stable IDs for requirements and criteria; observable acceptance criteria,
-   including refusals; the effect on what exists; decisions with their trail;
-   open questions with what they block. List the gaps.
-3. Close the gaps in place, or in an addendum when the spec is approved and
-   versioned and its owner prefers it untouched. Where the spec has no IDs, add
-   them without changing wording. Never renumber IDs that others already cite.
-4. Run [document review](doc-review.md) once, as a full round with the
-   `traceability`, `test-impact` and `edge-case-hunter` lenses. Skip the
-   editorial lenses and the adversarial lens unless the user wants the spec
-   reopened: an approved document is being checked for fitness, not rewritten.
-5. Bring `needs-human` findings and anything that changes meaning to the user.
-   If only form changed (IDs, structure), record that G1 stands on the earlier
-   approval; if content changed, ask for approval of the changes.
+## Adopting an existing plan (including entering `zone17-builder cook`)
 
-## An existing plan
-
-1. Run `plan-lint` on it first. The result is the list of mechanical gaps. A
-   plan with different labels may need only a labels file (`--labels`); see
-   `--help`.
-2. Upgrade the plan in place:
-   - one pipeline table with hard and soft dependencies, wave, weight and risk
-     per task (merge tables that hold these separately);
-   - in each task that is not finished: acceptance criteria with IDs, owned
-     paths, **impact outside the task** derived from the code, and a **test
-     plan** that covers every criterion and impact row ([plan.md](plan.md));
-   - a closing QA task, if the plan has none;
-   - gates that tasks wait on, as gate IDs.
-3. Tasks already merged stay as they are. Add a `Status` column to the pipeline
-   table, mark them `done` and give them no new fields (the lint then skips
-   their sections); their weight counts as accepted. Their changes
-   still matter: the impact rows of the remaining tasks must take the merged
-   code into account, and the final QA task covers the whole spec.
-4. Run the lint until it passes, then one review round with `traceability` and
-   `test-impact`, limited to what was added.
-5. Tell the user what was added and what it changes in effort, since new tests
-   and impact checks are real work that the original weights did not count. Adjust
-   weights only with their agreement, as a new scope version. Ask for approval
-   of the upgraded plan (G2); the earlier approval did not cover the additions.
-
-## What adoption does not do
-
-- It does not judge again decisions the user already made, or reopen an
-  approved scope.
-- It does not make an old plan pass by filling fields with placeholders. An
-  impact row or a test nobody thought about is worse than an honest gap, because
-  it looks checked.
-- It does not start the cook. G3 is still the user's word.
+1. Run `node <skill-root>/scripts/plan-lint.mjs <plan.md>` (passing `--labels`
+   if custom headings exist) to list exact mechanical gaps.
+2. Upgrade unfinished tasks in place ([plan.md](plan.md)):
+   - single pipeline table (`Task | Hard deps | Soft deps | Wave | Weight | Risk`);
+   - per unfinished task: `AC-n` criteria, `Domain shape`, `Owned paths`,
+     code-searched `Impact outside the task`, and a full `Test plan`;
+   - a closing `QA` task in the final wave and any gate IDs.
+3. Already-merged tasks keep a `Status: done` column entry (`plan-lint.mjs`
+   checks their dependencies/weights and skips section field checks); account
+   for their merged code in remaining tasks' impact rows and in Final QA.
+4. Run `plan-lint.mjs` to exit `0`, then one review pass (`traceability` +
+   `test-impact`) on the added sections.
+5. Report added checks/impact rows, confirm G2 on the upgraded plan, and wait
+   for explicit G3 before cooking. Never pad missing fields with fake
+   placeholders just to turn the linter green.

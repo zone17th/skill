@@ -1,32 +1,31 @@
 # Spec: <title>
 
-> Status: draft | in review | approved <date> · Version: <n> · Author: <who> · Reviewer: <model>
+> Status: draft | in review | approved <date> · Version: <n> · Author: <who> · Reviewer / Panel: <models>
 > Tracking: <issue reference, when the project requires one>
 
 Write in the project's document language. Keep the IDs (`R-`, `AC-`, `D-`,
-`Q-`) as they are; the plan, the tests and the QA report point at them. Delete
-this note and any section that truly does not apply, saying so in one line
-rather than leaving it empty.
+`Q-`) stable; the plan, tests and QA report point at them. Delete this note and
+mark any inapplicable section in one line rather than leaving it blank.
 
 ## 1. Summary
 
-<Two or three sentences: what will be different for whom when this is done.>
+<Two or three sentences: what changes for whom when this work is done.>
 
-## 2. Sources
+## 2. Sources & empirical spikes
 
-| Source | Version or date read | Saved copy |
+| Source or spike | Version / date / command | Saved copy or measured result |
 | --- | --- | --- |
-| <requirement document, design, ticket, conversation> | | <path, when the source can change> |
+| <requirement doc, design, ticket, or throwaway prototype benchmark> | | <snapshot path or measured numbers> |
 
 ## 3. Scope
 
 - **In scope:** <…>
 - **Out of scope:** <what a reader might expect and will not get>
-- **Must not change:** <existing behaviour that stays as it is>
+- **Must not change:** <existing behavior preserved unchanged>
 
 ## 4. Current state
 
-<What the system does today in the area touched, with file references.>
+<What the system does today in the touched area, with `file:line` references.>
 
 ## 5. Terms
 
@@ -37,13 +36,13 @@ rather than leaving it empty.
 
 ### R-1 <short name>
 
-<What must be true. One behaviour per requirement.>
+<What must be true. One cohesive behavior per requirement.>
 
 - Source: <source and location, or decision D-n>
 - Roles / states it applies to: <…>
 - Acceptance criteria:
   - **AC-1** Given <starting state>, when <action>, then <observable result>.
-  - **AC-2** <the refusal: given …, when …, then <error or unchanged state>>.
+  - **AC-2** *(Refusal / limit)* Given <invalid state or missing permission>, when <action>, then <error and unchanged state>.
 
 ### R-2 <short name>
 
@@ -51,25 +50,25 @@ rather than leaving it empty.
 
 ## 7. Effect on what exists
 
-What changes outside the new behaviour. This seeds the plan's impact rows.
+What changes outside the new behavior (seeds the plan's *Impact outside the task* rows).
 
 | What is affected | Where | How it changes | Requirement |
 | --- | --- | --- | --- |
-| <existing data, screens, endpoints, jobs, other modules, permissions, documents> | <path or name> | | R-n |
+| <existing data, screens, endpoints, jobs, modules, permissions, docs> | <path or symbol> | | R-n |
 
 ## 8. Data and migration
 
-<New or changed data; what happens to existing records; how to go back.>
+<New or changed data shapes; handling of existing rows; rollback path.>
 
 ## 9. Non-functional requirements
 
-Only the ones that apply, each with something measurable. The project's
-standing requirements (see the project profile) apply without being repeated.
+Only applicable items, each with a measurable target (standing repo rules in
+`project-profile.md` apply without repetition).
 
 | Kind | Requirement | How it is checked |
 | --- | --- | --- |
 | Security and permissions | | |
-| Performance | <a number and the conditions> | |
+| Performance | <number and conditions> | |
 | Accessibility, languages, compatibility | | |
 
 ## 10. Decisions
@@ -91,5 +90,5 @@ standing requirements (see the project profile) apply without being repeated.
 
 ## Review log
 
-| Round | Date | Reviewer | Blocking | Should fix | Minor | Rejected, with reasons | Report |
+| Round | Date | Reviewer / Panel | Blocking | Should fix | Minor | Rejected (with reason) | Report |
 | --- | --- | --- | --- | --- | --- | --- | --- |

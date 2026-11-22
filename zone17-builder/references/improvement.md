@@ -1,97 +1,75 @@
-# Improving this skill
+# Improving this skill (`encode-lessons-in-structure`)
 
-Every run teaches something about the process: a rule that was missing, one
-that was unclear, one that cost more than it caught. This file says how those
-observations are collected and how they reach the skill, so that it gets better
-with use instead of growing by accident.
+Every run exposes process friction: a silent gap, an ambiguous contract, or a
+rule heavier than the bugs it caught. Collect facts during the run, enforce
+fixes at the **highest structural level** that works so prompts stay lean, and
+apply changes only in the source repository after human approval.
 
-The division of work is simple. The Advisor (the author, in phase 1) notices
-and writes down. At set moments it sorts what it wrote and proposes changes.
-The human decides. Only an approved change is made, and it is made in the
-skill's source repository, never in an installed copy.
+## 1. Note friction as you go (`skill-notes.md`)
 
-## 1. Note as you go
+The Author (Phase 1) and `Orchestrator` (Phase 2) append concise factual entries
+to `skill-notes.md` in the run folder (lane `Advisor`s and `Lead`s send process
+observations in their messages; only `Orchestrator` writes the file):
 
-Keep `skill-notes.md` in the run folder, append-only. Add an entry whenever the
-process itself, not the product, went wrong or could have gone better. Check
-for something to note at these moments; often there is nothing, and that is
-fine:
+- after gates G1 and G2 (what did reviewers or the human catch late?);
+- after any task needing $> 1$ fix round or hitting the 2-strike worker reset;
+- after Wave gates and Final QA (what escaped per-task QC?);
+- whenever the `Orchestrator` had to improvise around a silent or overly rigid
+  rule.
 
-- after each gate in phase 1 (what did the reviewer or the human catch that the
-  templates or the method should have prompted?);
-- after each task is accepted or abandoned in phase 2;
-- after each wave gate and after final QA (what reached this point that a
-  task's own checks should have caught?);
-- whenever the Advisor had to improvise because the skill was silent, two
-  rules contradicted each other, or a rule had to be bent to keep working.
-
-One entry:
+Entry shape:
 
 ```text
-## <system time> · <phase, task or gate>
-- What happened: <facts, with the report or log path>
-- Cost: <rework rounds, lost time, a defect found late, a wrong question to the user>
-- Cause in the process: <missing rule | unclear rule | wrong rule | rule too heavy | tooling>
-- Where: <skill file and section, or "project rules", or "this run's team rules">
-- Idea: <the smallest change that would have prevented it>
+## <ISO time> · <phase / task / gate>
+- Fact & evidence: <what happened + log/report path>
+- Cost: <extra rounds, wasted tokens, late defect, unnecessary human question>
+- Root process cause: <missing check | unclear contract | wrong rule | prompt bloat | tooling>
+- Candidate fix & level: <architecture | script/lint | test | prose> — <1-line idea>
 ```
 
-Write facts, not blame. An entry without evidence is an opinion; keep it only
-if it recurs. Leads report process problems to the Advisor in their messages;
-only the Advisor writes the file.
+## 2. Sort by scope, then enforce at the highest structural level
 
-## 2. Sort before proposing
+At run close (or immediately when the same mistake class appears **twice**),
+sort entries by destination:
 
-At the end of the run, and earlier when the same problem shows up a second
-time, read the notes together and sort them:
-
-| Kind | Where it belongs | What to do |
+| Scope | Belongs in | Action |
 | --- | --- | --- |
-| About this project (its commands, hosts, conventions, a recurring trap in its code) | The project's rule files, or the next run's team rules | Propose it to the user as a project change; it never goes into this skill |
-| About this run only (a one-off incident, a provider outage) | The run's lessons file | Record it; propose nothing |
-| About the process, and it would apply in another project too | This skill | Candidate for a proposal |
+| Specific to this repository/stack | Project rules, types, or CI/lint | Propose as a project improvement; never put repo specifics into `zone17-builder` |
+| One-off runtime/provider incident | Run `lessons.md` | Record only; propose nothing |
+| Reusable across projects | `zone17-builder` | Evaluate via the 4-level hierarchy below |
 
-Keeping the skill project-neutral depends on this sorting. A rule that names a
-tool, a path or a team belongs to a project, however useful it was.
+### The 4-level enforcement hierarchy (never default to adding prose)
 
-Then weigh each candidate. Prefer changes that showed up more than once, cost
-something measurable, and can be fixed by clarifying or removing text.
-Be wary of adding a rule for a single incident: each rule is read on every
-future run, so it must earn its place. Proposing that a rule be deleted or
-simplified is as valuable as proposing a new one.
+Assume every future agent skims long Markdown files under context pressure. When
+fixing a recurring mistake class (2+ occurrences), pick the highest level that
+prevents it mechanically:
 
-## 3. Propose to the human
+1. **Level 1 — Architecture & Contract Shape:** change the workflow boundary or
+   JSON/YAML contract schema so the bad state cannot be represented (e.g.
+   isolating stage checkouts, splitting `Advisor` vs `Lead` roles, requiring
+   `domain_shape` up front).
+2. **Level 2 — Mechanical Script / Lint Check:** encode the rule in
+   `scripts/plan-lint.mjs`, `scripts/verify-evidence.mjs`, or
+   `scripts/audit-lanes.mjs` with an error message that names the exact fix.
+   *Whenever a new script check covers an old prose paragraph, delete or shrink
+   the prose paragraph in the same commit.*
+3. **Level 3 — Automated Test / Self-check:** add a fixture check proving the
+   script catches a real past mistake.
+4. **Level 4 — Prose Rule (last resort, judgment calls only):** add Markdown
+   instructions only when Levels 1–3 cannot express the rule. Deleting or
+   simplifying heavy prose is as valuable as adding a rule.
 
-When there are candidates, include a short section in the final report of the
-run (or raise it at once when a rule is actively causing harm). When there are
-none, say so in one line and move on; do not manufacture proposals.
+## 3. Propose to the human & apply cleanly
 
-For each proposal give:
+Include concrete proposals (evidence count, target file/script, enforcement
+level, token/latency cost, recommendation) at the end of the run report — or a
+single line saying `No skill changes proposed` when none cleared the bar.
 
-- the problem and how often it happened, with evidence paths;
-- the change: which file and section, and the new wording in a sentence or two;
-- what it costs every future run (more reading, more steps, a slower stage)
-  and what could go wrong with it;
-- your recommendation: adopt, try for one run, or leave.
-
-The human answers per item. Record each answer in the decision record.
-
-## 4. Apply an approved change
-
-- Edit the skill in its **source repository**, on a branch or directly as the
-  repository's own rules say, with the reason in the commit message. Installed
-  copies on any host are never edited by hand; they are replaced from the
-  repository.
-- Add an entry to `CHANGELOG.md` under a new version: what changed, why, and
-  which run it came from.
-- Run `scripts/plan-lint.mjs` on a known-good plan and check the links between
-  files when the change touches formats or file names.
-- Update every host the user works on from the repository, and say which hosts
-  were updated and which were not reachable.
-- A run in progress keeps the version it started with. It records that version
-  in its builder state, and takes an urgent fix as an entry in its own team
-  rules instead. The new version applies from the next run.
-
-Do not edit this skill, the project's rule files or another skill on your own
-initiative, even when the fix looks obvious. The cost of waiting for a yes is
-small; a process that rewrites itself unseen is one nobody can trust.
+Once approved by the human:
+1. Edit `zone17-builder` in its **source repository**, never only in an
+   installed global folder.
+2. Add a versioned entry to `CHANGELOG.md` citing the run/decision.
+3. Verify `plan-lint.mjs`, `verify-evidence.mjs` and `audit-lanes.mjs` pass
+   syntax and smoke checks.
+4. Sync installed copies across configured hosts (reporting any unreachable
+   host). Active runs keep the version recorded in their `builder-state.json`.

@@ -1,152 +1,96 @@
-# Review method
+# Code review method (Phase 2)
 
-How a BE or FE Reviewer stage produces its findings. It runs unattended inside
-a lane, so nothing in it may wait for a person. Its lens recipes are
-bundled in [`lenses/`](lenses/README.md), copied from BMAD's review skill, so
-neither the project nor the execution host needs BMAD installed.
+How `BE Reviewer` and `FE Reviewer` evaluate task revisions unattended inside a
+lane. Bundled lens recipes live in [`lenses/`](lenses/README.md). Interactive or
+self-orchestrating external workflows (`bmad-code-review`, `bmad-build-auto`,
+`bmad-walkthrough`) are strictly banned inside lanes.
 
-## What not to run
+## Core principle: Execution-proven review (`/interrogate` standard)
 
-A host may still have BMAD skills installed globally. Never run these inside a
-lane, on any role:
+Static speculation creates noise and defensive-code bloat. Reviewers operate on
+the lane's read-only stage checkout (`git checkout --detach <reviewed_sha>`) and
+must **ground findings in reality**:
 
-- `bmad-code-review`: it halts several times for a person's choice, and one of
-  its options makes the reviewer apply its own patches. Workers own fixes.
-- `bmad-build-auto`: it is its own unattended loop, a second orchestrator
-  inside the harness's.
-- `bmad-walkthrough`: it is a guided review with a person in it.
+1. **Probe whenever runnable.** If you suspect an unhandled input, broken caller,
+   type hole, regression or edge case that a quick command, existing test, node
+   one-liner or grep/AST check can demonstrate without modifying tracked files,
+   **run it** and attach the exact command and output.
+2. **Zero quota, zero filler.** `[]` (zero blocking/actionable findings) is a
+   valid, healthy verdict on clean code. Drop style nitpicks not backed by
+   project rules, hypothetical future requirements, and requests to add `if (!x)`
+   guards for states made impossible by internal types/boundaries
+   ([worker-principles.md](worker-principles.md#3-fix-root-causes-never-symptom-guards)).
+3. **Multi-vendor panel for `high` risk tasks.** When `risk_tier: high` and
+   `high_risk_panel` is configured in the roster, the lane `Advisor` or `Lead`
+   spawns 2 reviewers from different model families in parallel on the `full`
+   round and merges their verified findings.
 
 ## Inputs
 
-- `review_round`: `full` for the first review of a feature revision, `delta`
-  for verifying fixes after `changes_required`.
-- The reviewed range: `base_sha..reviewed_sha` for `full`,
-  `last_reviewed_sha..reviewed_sha` for `delta`. Write the unified diff to a
-  uniquely named temp file outside the worktree; lenses read that file, and the
-  diff text never goes into a prompt.
-- The feature contract: `result`, `acceptance`, `constraints` and the `rules`
-  paths. This is the change's intent.
-- For `delta`: the open findings of the previous round, with their IDs.
+- `review_round`: `full` (`base_sha..reviewed_sha`) or `delta`
+  (`last_reviewed_sha..reviewed_sha`). Write the unified diff to a temp file
+  outside the worktree; lenses read that file rather than receiving giant diffs
+  inlined in prompts.
+- Feature contract: `domain_shape`, `result`, `acceptance`, `constraints`,
+  `regression_scope`, and `rules` (including `worker-principles.md`).
+- For `delta`: open findings from the prior round with stable IDs `R<round>-<n>`.
 
 ## Lenses
 
 | Round | Lenses |
 | --- | --- |
-| `full` | `adversarial`, `edge-case-hunter`, `verification-gap`, plus `fe-quality` when the diff touches UI |
-| `delta` | `edge-case-hunter`, `verification-gap`, plus `fe-quality` when the delta touches UI |
+| `full` | `adversarial`, `edge-case-hunter`, `verification-gap`, plus `fe-quality` when UI files changed, plus `code-craft` check |
+| `delta` | `edge-case-hunter`, `verification-gap`, plus `fe-quality` when UI files changed in delta |
 
-`adversarial` must return at least ten findings, so it runs only in the full
-round. Running it in every round would keep the review/fix loop from ever
-settling. Most of its findings end as `false` or `low` in triage, and that is
-expected.
+Run lenses in parallel in-process subagents when available (each seeing only the
+diff file and contract intent, returning raw findings without spawning nested
+skills), or sequentially in one session otherwise.
 
-Each lens's recipe is a file in this skill's `references/lenses/` folder:
+### Built-in `fe-quality` & `code-craft` passes
 
-- `lens-adversarial.md`
-- `lens-edge-case-hunter.md`
-- `lens-verification-gap.md`
+- **`fe-quality` (when UI touched):** check missing loading/empty/error states,
+  keyboard reachability/focus order, accessible labels/roles, touch targets,
+  narrow/overflow/i18n layout resilience, and design-token/i18n bypasses against
+  project UI rules.
+- **`code-craft` (against `worker-principles.md`):** flag duplicated domain
+  state or boolean soup violating `domain_shape`, unparsed external boundary
+  inputs, leftover dead/compatibility shims, and redundant "what" comments left
+  behind.
 
-The contract's `review_method` field gives the absolute path of this file on
-the execution host; the lens files sit in `lenses/` beside it. A host that
-cannot reach the skill folder gets the files copied into the run folder, and
-the contract names that copy. Load the lens files yourself and run them as
-written. Do not invoke a `bmad-review` skill even when one is installed: it
-stops to offer setup in a project without `_bmad/`. Record
-`review_method: bundled-lenses` in the report.
+## Reviewer triage & verification
 
-When the lens files cannot be read at all, run the same three passes from
-their descriptions in this file: an adversarial pass that reads only the diff,
-an edge-case pass that traces every branch and boundary the change reaches, and
-a verification-gap pass that reads the tests before claiming what they cover.
-Record `review_method: builtin` and the reason in the report.
+After lenses return candidates, the Reviewer verifies each one before grading:
 
-### `fe-quality` lens
+1. Read the cited `file:line`, trace callers and upstream boundary types/guards,
+   and **run a non-destructive probe/test command** when executable verification
+   is possible.
+2. Assign one grade:
+   - `high` (`blocking: true` → `review_verdict: changes_required`): proven bug,
+     broken contract/caller, security/permission flaw, missing required
+     verification, or test weakened to fake a pass.
+   - `medium` (`blocking: lane_owner`): real defect or `worker-principles`
+     violation worth fixing now; the lane `Advisor` or `Lead` fixes it (often via
+     [small findings](orchestrator-operations.md#small-findings)) or records a
+     justified deferral before acceptance.
+   - `low` (`blocking: false`): real but minor; note only. Reject `low` items
+     into `rejected` if fixing them would add speculative branches or reader load.
+   - `maybe-false` (`blocking: lane_owner`): static code cannot settle it; name
+     the exact runtime check `Tester` must run to prove or refute it.
+   - `false` (`rejected` list with refutation): disproved by types, upstream
+     guards, project rules, or a passing probe. Never drop silently; record the
+     1-line refutation so later rounds do not re-raise it.
 
-This lens has no file; give this text to the lens as its whole recipe:
+## Output & Delta rounds
 
-> Review the UI part of the diff for problems a user meets: missing loading,
-> empty and error states; keyboard reachability and focus order; visible focus;
-> labels and roles for controls; touch targets on coarse pointers; layout at
-> narrow widths and with long or translated text; colours and sizes that bypass
-> the project's tokens; copy that bypasses the project's i18n. Read the
-> project's UI rules from the contract's `rules` paths first. Report each
-> finding with `location`, `trigger_condition`, `guard_snippet` and
-> `potential_consequence`. Do not assign severity. Return `[]` when the UI
-> change has none of these problems.
+Emit findings with stable ID `R<round>-<n>`, lens, `file:line`, `trigger`,
+`impact`, `severity`, `proof_command` (when run), proposed root-cause fix, and
+required verification. `review_verdict` is `changes_required` if any finding has
+`blocking: true`, `blocked` if inputs were unreadable, and `clear` otherwise.
 
-### Running the lenses
-
-Every lens sees the diff file and the contract intent, never another lens's
-findings. Give the edge-case, verification-gap and fe-quality lenses the
-contract's `rules` paths; keep the adversarial lens context-free, it reads only
-the diff. When the reviewer's provider has in-process subagents, launch one
-per lens, all before reading any result, each with: "Return ONLY your findings.
-Do not invoke any skill and do not spawn subagents." Otherwise run them one
-after another in the reviewer session. A lens that fails or returns nothing is
-listed under `failed_lenses` and the review continues with the rest.
-
-## Triage
-
-The reviewer, not the lenses, judges every finding after all lenses report:
-
-1. Verify the claim at the cited file and line. Follow callers and upstream
-   guards until the bad outcome is shown to happen or not. A true fact about
-   nearby code does not settle the finding.
-2. Give exactly one verdict:
-   - `high`: the bad outcome is real and intolerable for users or developers.
-   - `medium`: real and tolerable.
-   - `low`: real, cosmetic or negligible.
-   - `false`: checked, the bad outcome does not happen here; write what
-     disproves it.
-   - `maybe-false`: the code at hand cannot settle it; write what check would.
-   When the harm is real but its size is unclear, take the higher grade. A
-   developer-only harm must name where it will break.
-3. A verification-gap finding arrives with its evidence; trust what it filed
-   and grade it.
-4. Never drop a finding silently. `false` and rejected `low` findings go in
-   the report's `rejected` list with their reason. Reject a `low` finding when
-   everyday use is unlikely to meet it and its fix adds branches or guards.
-5. The project's rules (contract `rules`) override a lens's opinion: a finding
-   that asks for something the rules forbid is `false`; a rule violation is at
-   least `medium`.
-
-## Report
-
-Map the triaged findings onto the stage report in
-[task contracts](task-contracts.md#stage-outcomes-and-evidence):
-
-| Triage | Report field | Routing |
-| --- | --- | --- |
-| `high` | finding, `blocking: true` | `review_verdict: changes_required` |
-| `medium` | finding, `blocking: lead` | the lead fixes it or records a reasoned deferral before acceptance |
-| `low` (kept) | finding, `blocking: false` | note only |
-| `maybe-false` | finding, `blocking: lead`, with the check that settles it | the lead routes the check to the Tester or decides |
-| `false`, rejected `low` | `rejected` list with the refutation | none |
-
-Each finding carries a stable ID `R<round>-<n>`, the lens that raised it, file
-and line, `trigger_condition` as the trigger, `potential_consequence` as the
-impact, the triage grade as severity, `guard_snippet` as the proposed fix, the
-fix owner (the lane's worker for the touched paths) and the verification that
-will prove it fixed. Findings from several lenses about the same defect stay
-separate and are linked; overlap is signal.
-
-`review_verdict` is `changes_required` when any finding is `blocking: true`,
-`blocked` when the diff or rules could not be read, and `clear` otherwise.
-`clear` with `blocking: lead` items is still clear for the reviewer; the lead
-owns those items. Also record `review_round`, the reviewed range,
-`review_method` (`bundled-lenses` or `builtin`), the lenses run and
-`failed_lenses`.
-
-## Delta round
-
-A delta round reviews only the fix range and settles the previous round's open
-findings: each one is `resolved` (cite the commit and the evidence that covers
-its trigger), `open` or `superseded`. New findings in the delta get new IDs.
-An open `high` keeps `changes_required`. A delta that touches files outside the
-fixes, or more than the fixes need, gets a `full` round instead.
-
-Read a delta that edits tests or fixtures for weakened verification first:
-removed or loosened assertions, new skips, widened tolerances, and mocks that
-replace the path under test. File each one as a broken-verification gap. A
-test changed only so that it passes is a finding even when the production
-code is untouched.
+In a **`delta` round**:
+- Verify each prior open finding (`resolved` citing commit + test evidence,
+  `open`, or `superseded`). If the delta edited unrelated files beyond the fix
+  scope, escalate back to a `full` round.
+- **Audit test/fixture edits first:** any removed assertion, added skip, widened
+  tolerance, or mocked-out core path added to make tests green is an immediate
+  `high` (`blocking: true`) broken-verification finding.
